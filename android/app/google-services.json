@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "97237340421",
+    "project_id": "inspirex-6a4da",
+    "storage_bucket": "inspirex-6a4da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:97237340421:android:39392c7cad5c1a968f676c",
+        "android_client_info": {
+          "package_name": "com.example.inspire_x"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQFjei-mLErAKY6yfLpOtYl0CyEh5W1TU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
