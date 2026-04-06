@@ -1,35 +1,54 @@
 import 'package:flutter/material.dart';
 import 'idea_detail_screen.dart';
 import 'idea_bidding_screen.dart';
+import 'my_ideas_screen.dart';
+import 'profile_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-// ─── Constants (keep in sync with home_screen.dart) ────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 const _purple        = Color(0xFF7C3AED);
 const _gradientStart = Color(0xFF7C3AED);
 const _gradientEnd   = Color(0xFF3B82F6);
 const _bgColor       = Color(0xFFF8FAFC);
 
-// ─── Data models ────────────────────────────────────────────────────────────
-class _Idea {
-  final String id;
-  final String title;
-  final String description;
-  final int    upvotes;
-  final double aiRating;
-  final String category;
-  final bool   isPatented;
+// ─── Category config ──────────────────────────────────────────────────────────
+const _categories = [
+  'Food', 'AI', 'Automobile', 'Healthcare',
+  'Blockchain', 'IoT', 'Sustainability',
+];
 
-  const _Idea({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.upvotes,
-    required this.aiRating,
-    required this.category,
-    required this.isPatented,
-  });
-}
+const _categoryGradients = <String, List<Color>>{
+  'Food':          [Color(0xFFF97316), Color(0xFFEA580C)],
+  'AI':            [Color(0xFFA855F7), Color(0xFF7C3AED)],
+  'Automobile':    [Color(0xFF60A5FA), Color(0xFF2563EB)],
+  'Healthcare':    [Color(0xFFF87171), Color(0xFFDC2626)],
+  'Blockchain':    [Color(0xFF22D3EE), Color(0xFF0891B2)],
+  'IoT':           [Color(0xFF4ADE80), Color(0xFF16A34A)],
+  'Sustainability':[Color(0xFF34D399), Color(0xFF059669)],
+};
 
+const _tagColors = <String, Color>{
+  'Food':          Color(0xFFFFF3E0),
+  'AI':            Color(0xFFF3E8FF),
+  'Automobile':    Color(0xFFEFF6FF),
+  'Healthcare':    Color(0xFFFEF2F2),
+  'Blockchain':    Color(0xFFECFEFF),
+  'IoT':           Color(0xFFF0FDF4),
+  'Sustainability':Color(0xFFECFDF5),
+};
+
+const _tagTextColors = <String, Color>{
+  'Food':          Color(0xFFE65100),
+  'AI':            Color(0xFF6D28D9),
+  'Automobile':    Color(0xFF1D4ED8),
+  'Healthcare':    Color(0xFFDC2626),
+  'Blockchain':    Color(0xFF0E7490),
+  'IoT':           Color(0xFF15803D),
+  'Sustainability':Color(0xFF047857),
+};
+
+// ─── Investor model (local only, not Firestore) ───────────────────────────────
 class _Investor {
   final String id;
   final String name;
@@ -46,22 +65,6 @@ class _Investor {
   });
 }
 
-// ─── Static data ─────────────────────────────────────────────────────────────
-const _categories = [
-  'Food', 'AI', 'Automobile', 'Healthcare',
-  'Blockchain', 'IoT', 'Sustainability',
-];
-
-const _categoryGradients = <String, List<Color>>{
-  'Food':          [Color(0xFFF97316), Color(0xFFEA580C)],
-  'AI':            [Color(0xFFA855F7), Color(0xFF7C3AED)],
-  'Automobile':    [Color(0xFF60A5FA), Color(0xFF2563EB)],
-  'Healthcare':    [Color(0xFFF87171), Color(0xFFDC2626)],
-  'Blockchain':    [Color(0xFF22D3EE), Color(0xFF0891B2)],
-  'IoT':           [Color(0xFF4ADE80), Color(0xFF16A34A)],
-  'Sustainability':[Color(0xFF34D399), Color(0xFF059669)],
-};
-
 const _investorAvatarColors = <Color>[
   Color(0xFF7C3AED),
   Color(0xFFEC4899),
@@ -70,39 +73,12 @@ const _investorAvatarColors = <Color>[
   Color(0xFF06B6D4),
 ];
 
-final _allIdeas = <_Idea>[
-  _Idea(id:'1', title:'AI-Powered Meal Planning Assistant',
-      description:'An intelligent system that creates personalized meal plans based on dietary restrictions, budget, and local ingredient availability.',
-      upvotes:245, aiRating:4.5, category:'Food', isPatented:true),
-  _Idea(id:'2', title:'Blockchain-Based Supply Chain Tracker',
-      description:'Real-time tracking solution for supply chain management using blockchain technology to ensure transparency and reduce fraud.',
-      upvotes:189, aiRating:4.2, category:'Blockchain', isPatented:false),
-  _Idea(id:'3', title:'Smart Home Energy Optimizer',
-      description:'IoT device that learns your energy consumption patterns and automatically optimizes power usage to reduce bills by up to 40%.',
-      upvotes:312, aiRating:4.8, category:'IoT', isPatented:true),
-  _Idea(id:'4', title:'Virtual Reality Therapy Platform',
-      description:'VR-based mental health platform providing immersive therapy sessions for anxiety, PTSD, and phobias with licensed therapists.',
-      upvotes:278, aiRating:4.6, category:'Healthcare', isPatented:false),
-  _Idea(id:'5', title:'AI Code Review Assistant',
-      description:'Automated code review tool powered by machine learning that identifies bugs, security vulnerabilities, and suggests optimizations.',
-      upvotes:421, aiRating:4.9, category:'AI', isPatented:true),
-  _Idea(id:'6', title:'Sustainable Packaging Solution',
-      description:'Biodegradable packaging material made from agricultural waste that decomposes within 30 days and costs less than plastic.',
-      upvotes:356, aiRating:4.7, category:'Sustainability', isPatented:false),
-  _Idea(id:'7', title:'Smart Restaurant Inventory System',
-      description:'AI-driven inventory management for restaurants that predicts demand and reduces food waste by 50%.',
-      upvotes:198, aiRating:4.3, category:'Food', isPatented:false),
-  _Idea(id:'8', title:'Autonomous Delivery Drone Network',
-      description:'Urban delivery system using autonomous drones for last-mile delivery, reducing delivery times by 70%.',
-      upvotes:334, aiRating:4.4, category:'Automobile', isPatented:true),
-];
-
 final _investors = <_Investor>[
-  _Investor(id:'1', name:'Rahul Sharma',  designation:'CEO',                company:'Flipkart',        avatarColor: _investorAvatarColors[0]),
-  _Investor(id:'2', name:'Priya Patel',   designation:'Investment Director', company:'Sequoia Capital', avatarColor: _investorAvatarColors[1]),
-  _Investor(id:'3', name:'Amit Kumar',    designation:'Managing Partner',    company:'Accel Partners',  avatarColor: _investorAvatarColors[2]),
-  _Investor(id:'4', name:'Neha Gupta',    designation:'VP of Investments',   company:'SoftBank',        avatarColor: _investorAvatarColors[3]),
-  _Investor(id:'5', name:'Vikram Singh',  designation:'Angel Investor',      company:'Independent',     avatarColor: _investorAvatarColors[4]),
+  _Investor(id: '1', name: 'Rahul Sharma',  designation: 'CEO',                company: 'Flipkart',        avatarColor: _investorAvatarColors[0]),
+  _Investor(id: '2', name: 'Priya Patel',   designation: 'Investment Director', company: 'Sequoia Capital', avatarColor: _investorAvatarColors[1]),
+  _Investor(id: '3', name: 'Amit Kumar',    designation: 'Managing Partner',    company: 'Accel Partners',  avatarColor: _investorAvatarColors[2]),
+  _Investor(id: '4', name: 'Neha Gupta',    designation: 'VP of Investments',   company: 'SoftBank',        avatarColor: _investorAvatarColors[3]),
+  _Investor(id: '5', name: 'Vikram Singh',  designation: 'Angel Investor',      company: 'Independent',     avatarColor: _investorAvatarColors[4]),
 ];
 
 // ─── SearchScreen ─────────────────────────────────────────────────────────────
@@ -115,22 +91,24 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen>
     with SingleTickerProviderStateMixin {
-
-  // bottom-nav: Search tab pre-selected
   int _selectedIndex = 1;
 
-  // search & filter
   String? _selectedCategory;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // invite tracking
   final Set<String> _invitedIds = {};
 
-  // drawer
   bool _drawerOpen = false;
   late AnimationController _drawerController;
   late Animation<double>   _drawerSlide;
+
+  // ── Live stream from the shared approved_ideas collection ─────────────────
+  final Stream<QuerySnapshot<Map<String, dynamic>>> _approvedIdeasStream =
+  FirebaseFirestore.instance
+      .collection('approved_ideas')
+      .orderBy('approvedAt', descending: true)
+      .snapshots();
 
   @override
   void initState() {
@@ -152,7 +130,7 @@ class _SearchScreenState extends State<SearchScreen>
     super.dispose();
   }
 
-  // ── drawer helpers ────────────────────────────────────────────────────────
+  // ── Drawer helpers ────────────────────────────────────────────────────────
   void _toggleDrawer() {
     setState(() => _drawerOpen = !_drawerOpen);
     _drawerOpen
@@ -167,31 +145,39 @@ class _SearchScreenState extends State<SearchScreen>
     }
   }
 
-  // ── filtering ─────────────────────────────────────────────────────────────
-  List<_Idea> get _filteredIdeas {
-    var ideas = _allIdeas;
+  // ── Client-side filtering ─────────────────────────────────────────────────
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _filterDocs(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    var filtered = docs;
+
     if (_selectedCategory != null) {
-      ideas = ideas.where((i) => i.category == _selectedCategory).toList();
-    }
-    if (_searchQuery.isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
-      ideas = ideas
-          .where((i) =>
-      i.title.toLowerCase().contains(q) ||
-          i.description.toLowerCase().contains(q) ||
-          i.category.toLowerCase().contains(q))
+      filtered = filtered
+          .where((d) => d.data()['category'] == _selectedCategory)
           .toList();
     }
-    return ideas;
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      filtered = filtered.where((d) {
+        final data = d.data();
+        final title = (data['title'] as String? ?? '').toLowerCase();
+        final desc  = (data['detailedSolution'] as String? ??
+            data['problemStatement'] as String? ?? '').toLowerCase();
+        final cat   = (data['category'] as String? ?? '').toLowerCase();
+        return title.contains(q) || desc.contains(q) || cat.contains(q);
+      }).toList();
+    }
+
+    return filtered;
   }
 
-  // ── bottom nav ────────────────────────────────────────────────────────────
+  // ── Bottom nav ────────────────────────────────────────────────────────────
   void _onBottomNavTap(int index) {
     if (index == _selectedIndex) return;
     if (index == 0) Navigator.pop(context);
   }
 
-  // ── invite ────────────────────────────────────────────────────────────────
+  // ── Invite ────────────────────────────────────────────────────────────────
   void _sendInvite(_Investor investor) {
     setState(() => _invitedIds.add(investor.id));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -202,37 +188,40 @@ class _SearchScreenState extends State<SearchScreen>
         ),
         backgroundColor: _purple,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10)),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  // ── navigate to idea detail ───────────────────────────────────────────────
-  void _openDetail(_Idea idea) {
+  // ── Navigate to detail ────────────────────────────────────────────────────
+  void _openDetail(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data();
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => IdeaDetailScreen(
-          title: idea.title,
-          description: idea.description,
-          likes: idea.upvotes,       // upvotes → likes
-          aiRating: idea.aiRating,
-          industry: idea.category,   // category → industry
-          isPatented: idea.isPatented,
-          contributorName: 'John Doe',
+          ideaId:          doc.id,
+          title:           d['title']            as String? ?? '',
+          description:     d['detailedSolution'] as String? ??
+              d['problemStatement']              as String? ?? '',
+          likes:           d['likes']            as int?    ?? 0,
+          aiRating:        (d['aiRating']        as num?)?.toDouble() ?? 4.0,
+          industry:        d['category']         as String? ?? '',
+          isPatented:      d['isPatented']       as bool?   ?? false,
+          contributorName: d['contributorName']  as String? ?? 'Innovator',
         ),
       ),
     );
   }
 
-  // ── navigate to bidding ───────────────────────────────────────────────────
-  void _openBidding(_Idea idea) {
+  // ── Navigate to bidding ───────────────────────────────────────────────────
+  void _openBidding(String title) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => IdeaBiddingScreen(ideaTitle: idea.title),
+        builder: (_) => IdeaBiddingScreen(ideaTitle: title),
       ),
     );
   }
@@ -242,26 +231,39 @@ class _SearchScreenState extends State<SearchScreen>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // ── 1. Scaffold ───────────────────────────────────────────────────
         Scaffold(
           backgroundColor: _bgColor,
           body: Column(
             children: [
               _buildAppBar(),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                  children: [
-                    _buildSearchBar(),
-                    const SizedBox(height: 20),
-                    _buildCategorySection(),
-                    const SizedBox(height: 20),
-                    _buildIdeasSection(),
-                    const SizedBox(height: 8),
-                    _buildSearchMore(),
-                    const SizedBox(height: 24),
-                    _buildInvestorsSection(),
-                  ],
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _approvedIdeasStream,
+                  builder: (_, snap) {
+                    // ── Loading ───────────────────────────────────────
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: _purple),
+                      );
+                    }
+
+                    final allDocs  = snap.data?.docs ?? [];
+                    final filtered = _filterDocs(allDocs);
+
+                    return ListView(
+                      padding:
+                      const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      children: [
+                        _buildSearchBar(),
+                        const SizedBox(height: 20),
+                        _buildCategorySection(),
+                        const SizedBox(height: 20),
+                        _buildIdeasSection(filtered),
+                        const SizedBox(height: 24),
+                        _buildInvestorsSection(),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -272,14 +274,14 @@ class _SearchScreenState extends State<SearchScreen>
           FloatingActionButtonLocation.centerDocked,
         ),
 
-        // ── 2. Scrim ──────────────────────────────────────────────────────
+        // ── Scrim ─────────────────────────────────────────────────────
         if (_drawerOpen)
           GestureDetector(
             onTap: _closeDrawer,
             child: Container(color: Colors.black.withOpacity(0.35)),
           ),
 
-        // ── 3. Drawer ─────────────────────────────────────────────────────
+        // ── Drawer ────────────────────────────────────────────────────
         AnimatedBuilder(
           animation: _drawerSlide,
           builder: (_, __) => Transform.translate(
@@ -318,18 +320,24 @@ class _SearchScreenState extends State<SearchScreen>
                 ),
               ),
             ),
-            Container(
-              width: 38,
-              height: 38,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
               ),
-              child: const Icon(Icons.person, color: Colors.white, size: 20),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [_gradientStart, _gradientEnd],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(Icons.person, color: Colors.white, size: 20),
+              ),
             ),
           ],
         ),
@@ -402,25 +410,50 @@ class _SearchScreenState extends State<SearchScreen>
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 children: [
                   _DrawerItem(
-                      icon: Icons.home_outlined,
-                      label: 'Home',
-                      onTap: () {
-                        _closeDrawer();
-                        Navigator.popUntil(
-                            context, (route) => route.isFirst);
-                      }),
+                    icon: Icons.home_outlined,
+                    label: 'Home',
+                    onTap: () {
+                      _closeDrawer();
+                      Navigator.popUntil(context, (r) => r.isFirst);
+                    },
+                  ),
                   _DrawerItem(
-                      icon: Icons.trending_up_outlined,
-                      label: 'My Ideas',
-                      onTap: _closeDrawer),
+                    icon: Icons.trending_up_outlined,
+                    label: 'My Ideas',
+                    onTap: () {
+                      _closeDrawer();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const MyIdeasScreen()),
+                      );
+                    },
+                  ),
                   _DrawerItem(
-                      icon: Icons.notifications_outlined,
-                      label: 'Notifications',
-                      onTap: _closeDrawer),
+                    icon: Icons.notifications_outlined,
+                    label: 'Notifications',
+                    onTap: () {
+                      _closeDrawer();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NotificationsScreen(uid: null),
+                        ),
+                      );
+                    },
+                  ),
                   _DrawerItem(
-                      icon: Icons.person_outline,
-                      label: 'Profile',
-                      onTap: _closeDrawer),
+                    icon: Icons.person_outline,
+                    label: 'Profile',
+                    onTap: () {
+                      _closeDrawer();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ProfileScreen()),
+                      );
+                    },
+                  ),
                   _DrawerItem(
                       icon: Icons.settings_outlined,
                       label: 'Settings',
@@ -495,8 +528,8 @@ class _SearchScreenState extends State<SearchScreen>
           )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 14),
+          contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
@@ -520,7 +553,7 @@ class _SearchScreenState extends State<SearchScreen>
           runSpacing: 10,
           children: _categories.map((cat) {
             final isSelected = _selectedCategory == cat;
-            final colors = _categoryGradients[cat]!;
+            final colors     = _categoryGradients[cat]!;
             return GestureDetector(
               onTap: () => setState(() =>
               _selectedCategory =
@@ -563,22 +596,20 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   // ── Ideas Section ─────────────────────────────────────────────────────────
-  Widget _buildIdeasSection() {
-    final ideas = _filteredIdeas; // ← uses filtered list, not _ideas
+  Widget _buildIdeasSection(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _selectedCategory != null
-              ? '$_selectedCategory Ideas'
-              : 'All Ideas',
+          _selectedCategory != null ? '$_selectedCategory Ideas' : 'All Ideas',
           style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF111827)),
         ),
         const SizedBox(height: 12),
-        if (ideas.isEmpty)
+        if (docs.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -590,32 +621,18 @@ class _SearchScreenState extends State<SearchScreen>
             ),
           )
         else
-        // ── Card tap → detail, button tap → bidding ──────────────────
-          ...ideas.map((idea) => GestureDetector(
-            onTap: () => _openDetail(idea),
-            child: _IdeaCardWidget(
-              idea: idea,
-              onBidTap: () => _openBidding(idea),
-            ),
-          )),
+          ...docs.map((doc) {
+            final d = doc.data();
+            return GestureDetector(
+              onTap: () => _openDetail(doc),
+              child: _IdeaCardWidget(
+                data: d,
+                onBidTap: () =>
+                    _openBidding(d['title'] as String? ?? ''),
+              ),
+            );
+          }),
       ],
-    );
-  }
-
-  // ── Search for more ───────────────────────────────────────────────────────
-  Widget _buildSearchMore() {
-    return Center(
-      child: GestureDetector(
-        onTap: () {},
-        child: Text(
-          'Search for more ideas',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: _purple,
-          ),
-        ),
-      ),
     );
   }
 
@@ -633,9 +650,9 @@ class _SearchScreenState extends State<SearchScreen>
         ),
         const SizedBox(height: 12),
         ..._investors.map((inv) => _InvestorCard(
-          investor: inv,
+          investor:  inv,
           isInvited: _invitedIds.contains(inv.id),
-          onInvite: () => _sendInvite(inv),
+          onInvite:  () => _sendInvite(inv),
         )),
       ],
     );
@@ -742,39 +759,29 @@ class _SearchScreenState extends State<SearchScreen>
   }
 }
 
-// ─── Idea Card ────────────────────────────────────────────────────────────────
+// ─── Idea Card (Firestore-backed) ─────────────────────────────────────────────
 class _IdeaCardWidget extends StatelessWidget {
-  final _Idea idea;
-  final VoidCallback onBidTap; // ← added
+  final Map<String, dynamic> data;
+  final VoidCallback onBidTap;
 
   const _IdeaCardWidget({
-    required this.idea,
-    required this.onBidTap, // ← added
+    required this.data,
+    required this.onBidTap,
   });
-
-  static const _tagColors = <String, Color>{
-    'Food':          Color(0xFFFFF3E0),
-    'AI':            Color(0xFFF3E8FF),
-    'Automobile':    Color(0xFFEFF6FF),
-    'Healthcare':    Color(0xFFFEF2F2),
-    'Blockchain':    Color(0xFFECFEFF),
-    'IoT':           Color(0xFFF0FDF4),
-    'Sustainability':Color(0xFFECFDF5),
-  };
-  static const _tagTextColors = <String, Color>{
-    'Food':          Color(0xFFE65100),
-    'AI':            Color(0xFF6D28D9),
-    'Automobile':    Color(0xFF1D4ED8),
-    'Healthcare':    Color(0xFFDC2626),
-    'Blockchain':    Color(0xFF0E7490),
-    'IoT':           Color(0xFF15803D),
-    'Sustainability':Color(0xFF047857),
-  };
 
   @override
   Widget build(BuildContext context) {
-    final tagBg   = _tagColors[idea.category]    ?? const Color(0xFFF3F4F6);
-    final tagText = _tagTextColors[idea.category] ?? const Color(0xFF374151);
+    final title       = data['title']            as String? ?? 'Untitled';
+    final desc        = data['detailedSolution'] as String? ??
+        data['problemStatement']                 as String? ?? '';
+    final likes       = data['likes']            as int?    ?? 0;
+    final aiRating    = (data['aiRating']        as num?)?.toDouble() ?? 4.0;
+    final category    = data['category']         as String? ?? '';
+    final isPatented  = data['isPatented']       as bool?   ?? false;
+    final contributor = data['contributorName']  as String? ?? 'Innovator';
+
+    final tagBg   = _tagColors[category]     ?? const Color(0xFFF3F4F6);
+    final tagText = _tagTextColors[category] ?? const Color(0xFF374151);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -800,13 +807,39 @@ class _IdeaCardWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(idea.title,
+            // ── Contributor ─────────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                        colors: [_gradientStart, _gradientEnd]),
+                  ),
+                  child:
+                  const Icon(Icons.person, color: Colors.white, size: 15),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  contributor,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF6B7280)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            Text(title,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF111827))),
             const SizedBox(height: 6),
-            Text(idea.description,
+            Text(desc,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
@@ -821,7 +854,7 @@ class _IdeaCardWidget extends StatelessWidget {
                 const Icon(Icons.thumb_up_alt_outlined,
                     size: 16, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
-                Text('${idea.upvotes}',
+                Text('$likes',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: const Color(0xFF374151),
@@ -831,9 +864,9 @@ class _IdeaCardWidget extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13, color: const Color(0xFF6B7280))),
                 const SizedBox(width: 4),
-                _StarRating(rating: idea.aiRating),
+                _StarRating(rating: aiRating),
                 const SizedBox(width: 4),
-                Text(idea.aiRating.toStringAsFixed(1),
+                Text(aiRating.toStringAsFixed(1),
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: const Color(0xFF374151),
@@ -845,24 +878,25 @@ class _IdeaCardWidget extends StatelessWidget {
             // Tags
             Row(
               children: [
+                if (category.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                        color: tagBg,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: Text(category,
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: tagText)),
+                  ),
+                if (category.isNotEmpty) const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                      color: tagBg,
-                      borderRadius: BorderRadius.circular(20)),
-                  child: Text(idea.category,
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: tagText)),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: idea.isPatented
+                    color: isPatented
                         ? const Color(0xFFE8F5E9)
                         : const Color(0xFFF3F4F6),
                     borderRadius: BorderRadius.circular(20),
@@ -871,21 +905,21 @@ class _IdeaCardWidget extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        idea.isPatented
+                        isPatented
                             ? Icons.verified_outlined
                             : Icons.block_outlined,
                         size: 13,
-                        color: idea.isPatented
+                        color: isPatented
                             ? const Color(0xFF2E7D32)
                             : const Color(0xFF6B7280),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        idea.isPatented ? 'Patented' : 'Not Patented',
+                        isPatented ? 'Patented' : 'Not Patented',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: idea.isPatented
+                          color: isPatented
                               ? const Color(0xFF2E7D32)
                               : const Color(0xFF6B7280),
                         ),
@@ -897,7 +931,7 @@ class _IdeaCardWidget extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            // Bid button — onPressed: onBidTap ← fixed
+            // Bid button
             SizedBox(
               width: double.infinity,
               height: 46,
@@ -911,7 +945,7 @@ class _IdeaCardWidget extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextButton(
-                  onPressed: onBidTap, // ← wired up
+                  onPressed: onBidTap,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -983,10 +1017,10 @@ class _InvestorCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            // Avatar
             Container(
               width: 52,
               height: 52,
@@ -1005,8 +1039,6 @@ class _InvestorCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-
-            // Name + role
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1025,10 +1057,7 @@ class _InvestorCard extends StatelessWidget {
                 ],
               ),
             ),
-
             const SizedBox(width: 8),
-
-            // Connect / Invited button
             GestureDetector(
               onTap: isInvited ? null : onInvite,
               child: AnimatedContainer(
@@ -1097,7 +1126,8 @@ class _DrawerItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           children: [
             Icon(icon, color: _purple, size: 22),

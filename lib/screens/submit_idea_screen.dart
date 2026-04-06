@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const _purple        = Color(0xFF7C3AED);
@@ -14,6 +19,9 @@ const _categories = [
   'Blockchain', 'IoT', 'Sustainability',
 ];
 
+// Max patent image size: 150 KB
+const int _maxPatentBytes = 150 * 1024;
+
 // ─── SubmitIdeaScreen ─────────────────────────────────────────────────────────
 class SubmitIdeaScreen extends StatefulWidget {
   const SubmitIdeaScreen({super.key});
@@ -25,22 +33,27 @@ class SubmitIdeaScreen extends StatefulWidget {
 class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // controllers
+  // ── Controllers ───────────────────────────────────────────────────────────
   final _titleController     = TextEditingController();
   final _problemController   = TextEditingController();
   final _solutionController  = TextEditingController();
   final _basePriceController = TextEditingController();
 
-  // form state
+  // ── Form state ────────────────────────────────────────────────────────────
   String?    _selectedCategory;
   bool?      _patentAvailable;
   DateTime?  _selectedDate;
   TimeOfDay? _selectedTime;
   bool       _submitting = false;
 
+  // ── Patent image ──────────────────────────────────────────────────────────
+  File?   _patentImageFile;
+  String? _patentImageBase64;
+  final   ImagePicker _imagePicker = ImagePicker();
+
   // ── AI price state ────────────────────────────────────────────────────────
-  bool   _aiLoading       = false;
-  bool   _aiPriceRevealed = false;
+  bool   _aiLoading        = false;
+  bool   _aiPriceRevealed  = false;
   String _aiLoadingMessage = '';
 
   final List<String> _aiMessages = [
@@ -52,6 +65,10 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
     '🤖 Calculating optimal base price...',
   ];
 
+  // ── Firebase ──────────────────────────────────────────────────────────────
+  final _auth      = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -61,9 +78,9 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
     super.dispose();
   }
 
-  // ── date picker ───────────────────────────────────────────────────────────
+  // ── Date picker ───────────────────────────────────────────────────────────
   Future<void> _pickDate() async {
-    final now = DateTime.now();
+    final now    = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
@@ -79,7 +96,7 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
-  // ── time picker ───────────────────────────────────────────────────────────
+  // ── Time picker ───────────────────────────────────────────────────────────
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -94,33 +111,122 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
+  // ── Pick patent image ─────────────────────────────────────────────────────
+  Future<void> _pickPatentImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1D5DB),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Text('Upload Patent Document',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF111827))),
+              const SizedBox(height: 4),
+              Text('Max file size: 150 KB',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12, color: const Color(0xFF6B7280))),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined,
+                    color: _purple),
+                title: Text('Choose from Gallery',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined,
+                    color: _purple),
+                title: Text('Take a Photo',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final picked = await _imagePicker.pickImage(
+      source: source,
+      imageQuality: 40,
+      maxWidth: 700,
+      maxHeight: 700,
+    );
+
+    if (picked == null || !mounted) return;
+
+    final file  = File(picked.path);
+    final bytes = await file.readAsBytes();
+
+    if (bytes.length > _maxPatentBytes) {
+      _showError(
+        'Image is ${(bytes.length / 1024).toStringAsFixed(0)} KB — '
+            'please use an image under 150 KB.',
+      );
+      return;
+    }
+
+    setState(() {
+      _patentImageFile   = file;
+      _patentImageBase64 = base64Encode(bytes);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        'Patent image selected (${(bytes.length / 1024).toStringAsFixed(0)} KB)',
+        style: GoogleFonts.plusJakartaSans(fontSize: 13),
+      ),
+      backgroundColor: Colors.green,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
   // ── AI price fetch ────────────────────────────────────────────────────────
   Future<void> _getAISuggestedPrice() async {
     if (_aiLoading || _aiPriceRevealed) return;
     setState(() {
-      _aiLoading = true;
+      _aiLoading        = true;
       _aiLoadingMessage = _aiMessages[0];
     });
 
-    // Cycle through messages every ~2.5 seconds (~15s total)
     for (int i = 1; i < _aiMessages.length; i++) {
       await Future.delayed(const Duration(milliseconds: 2500));
       if (!mounted) return;
       setState(() => _aiLoadingMessage = _aiMessages[i]);
     }
 
-    // Small pause after last message before revealing price
     await Future.delayed(const Duration(milliseconds: 2000));
     if (!mounted) return;
     setState(() {
-      _aiLoading = false;
-      _aiPriceRevealed = true;
+      _aiLoading        = false;
+      _aiPriceRevealed  = true;
     });
   }
 
-  // ── submit ────────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (_selectedCategory == null) {
       _showError('Please select a category.');
       return;
@@ -129,26 +235,76 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
       _showError('Please select patent availability.');
       return;
     }
+    if (_patentAvailable == true && _patentImageBase64 == null) {
+      _showError('Please upload your patent document.');
+      return;
+    }
     if (_selectedDate == null || _selectedTime == null) {
       _showError('Please set a bidding schedule.');
       return;
     }
 
     setState(() => _submitting = true);
-    await Future.delayed(const Duration(milliseconds: 1500));
-    setState(() => _submitting = false);
 
-    if (!mounted) return;
-    _showSuccess();
+    try {
+      final uid = _auth.currentUser?.uid;
+
+      final Map<String, dynamic> ideaData = {
+        'uid':              uid,
+        'title':            _titleController.text.trim(),
+        'problemStatement': _problemController.text.trim(),
+        'detailedSolution': _solutionController.text.trim(),
+        'category':         _selectedCategory,
+        'isPatented':       _patentAvailable,
+        'basePrice':        int.tryParse(_basePriceController.text.trim()) ?? 0,
+        'biddingDate':      _selectedDate != null
+            ? '${_selectedDate!.day.toString().padLeft(2, '0')}-'
+            '${_selectedDate!.month.toString().padLeft(2, '0')}-'
+            '${_selectedDate!.year}'
+            : null,
+        'biddingTime':      _selectedTime?.format(context),
+        'status':           'pending_review',
+        // FIX: Added client-side integer timestamp used for sorting in admin screen.
+        // FieldValue.serverTimestamp() is async and arrives null briefly,
+        // which breaks orderBy. 'createdAt' (int ms) is available immediately.
+        'createdAt':        DateTime.now().millisecondsSinceEpoch,
+        'submittedAt':      FieldValue.serverTimestamp(),
+      };
+
+      if (_aiPriceRevealed) {
+        ideaData['aiSuggestedPrice'] = 50000;
+      }
+
+      if (_patentAvailable == true && _patentImageBase64 != null) {
+        ideaData['patentImageBase64'] = _patentImageBase64;
+      }
+
+      if (uid != null) {
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('ideas')
+            .add(ideaData);
+      }
+
+      setState(() => _submitting = false);
+      if (!mounted) return;
+      _showSuccess();
+    } catch (e) {
+      setState(() => _submitting = false);
+      _showError('Failed to submit: $e');
+    }
   }
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.plusJakartaSans(fontSize: 13)),
+      content: Text(msg,
+          style: GoogleFonts.plusJakartaSans(fontSize: 13)),
       backgroundColor: Colors.redAccent,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      duration: const Duration(seconds: 2),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 3),
     ));
   }
 
@@ -157,16 +313,15 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => Dialog(
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: const EdgeInsets.all(28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 64, height: 64,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -175,8 +330,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child:
-                const Icon(Icons.check, color: Colors.white, size: 32),
+                child: const Icon(Icons.check,
+                    color: Colors.white, size: 32),
               ),
               const SizedBox(height: 16),
               Text('Idea Submitted!',
@@ -186,7 +341,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                       color: const Color(0xFF111827))),
               const SizedBox(height: 8),
               Text(
-                'Your idea has been submitted for review. We\'ll notify you once it\'s approved.',
+                'Your idea has been submitted for review. '
+                    'We\'ll notify you once it\'s approved.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
@@ -200,9 +356,10 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                        colors: [_gradientStart, _gradientEnd],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight),
+                      colors: [_gradientStart, _gradientEnd],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: TextButton(
@@ -217,7 +374,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                     ),
                     child: Text('Back to Home',
                         style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15, fontWeight: FontWeight.w600)),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ),
               ),
@@ -254,7 +412,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                   const SizedBox(height: 20),
 
                   // ── Problem Statement ──────────────────────────────────
-                  _FieldLabel(text: 'Problem Statement', required: true),
+                  _FieldLabel(
+                      text: 'Problem Statement', required: true),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _problemController,
@@ -267,7 +426,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
 
                   // ── Detailed Statement & Solution ──────────────────────
                   _FieldLabel(
-                      text: 'Detailed Statement & Solution', required: true),
+                      text: 'Detailed Statement & Solution',
+                      required: true),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _solutionController,
@@ -285,30 +445,41 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                   const SizedBox(height: 20),
 
                   // ── Patent Available ───────────────────────────────────
-                  _FieldLabel(text: 'Patent Available?', required: true),
+                  _FieldLabel(
+                      text: 'Patent Available?', required: true),
                   const SizedBox(height: 10),
                   _buildPatentToggle(),
+                  const SizedBox(height: 12),
+
+                  // ── Patent image upload (only when Yes) ────────────────
+                  if (_patentAvailable == true)
+                    _buildPatentUploadSection(),
+
                   const SizedBox(height: 20),
 
                   // ── Base Price ─────────────────────────────────────────
-                  _FieldLabel(text: 'Base Price (USD)', required: true),
+                  _FieldLabel(
+                      text: 'Base Price (USD)', required: true),
                   const SizedBox(height: 8),
                   _buildTextField(
                     controller: _basePriceController,
                     hint: 'Enter your expected base price',
                     keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly
+                    ],
                     validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
 
-                  // ── AI Suggested Price (interactive) ───────────────────
+                  // ── AI Suggested Price ─────────────────────────────────
                   _buildAISuggestedCard(),
                   const SizedBox(height: 20),
 
                   // ── Bidding Schedule ───────────────────────────────────
-                  _FieldLabel(text: 'Bidding Schedule', required: true),
+                  _FieldLabel(
+                      text: 'Bidding Schedule', required: true),
                   const SizedBox(height: 10),
                   _buildBiddingSchedule(),
                   const SizedBox(height: 32),
@@ -330,7 +501,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
       bottom: false,
       child: Container(
         color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
           children: [
             IconButton(
@@ -375,8 +547,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
             fontSize: 14, color: const Color(0xFF9CA3AF)),
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -414,15 +586,15 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                   () => _selectedCategory = isSelected ? null : cat),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 9),
             decoration: BoxDecoration(
-              color:
-              isSelected ? _purple.withOpacity(0.08) : Colors.white,
+              color: isSelected
+                  ? _purple.withOpacity(0.08)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color:
-                isSelected ? _purple : const Color(0xFFD1D5DB),
+                color: isSelected ? _purple : const Color(0xFFD1D5DB),
                 width: isSelected ? 1.5 : 1,
               ),
             ),
@@ -450,27 +622,175 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
         _PatentOption(
           label: 'Yes',
           selected: _patentAvailable == true,
-          onTap: () => setState(() => _patentAvailable = true),
+          onTap: () => setState(() {
+            _patentAvailable = true;
+          }),
         ),
         const SizedBox(width: 12),
         _PatentOption(
           label: 'No',
           selected: _patentAvailable == false,
-          onTap: () => setState(() => _patentAvailable = false),
+          onTap: () => setState(() {
+            _patentAvailable    = false;
+            _patentImageFile   = null;
+            _patentImageBase64 = null;
+          }),
         ),
       ],
     );
   }
 
-  // ── AI Suggested Price — interactive ─────────────────────────────────────
+  // ── Patent image upload section ───────────────────────────────────────────
+  Widget _buildPatentUploadSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline,
+                  color: Color(0xFFD97706), size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Please upload a clear photo of your patent certificate. '
+                      'Max size: 150 KB (compressed JPG recommended).',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: const Color(0xFF92400E),
+                      height: 1.4),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        RichText(
+          text: TextSpan(
+            text: 'Patent Document',
+            style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1F2937)),
+            children: const [
+              TextSpan(
+                text: ' *',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        GestureDetector(
+          onTap: _pickPatentImage,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: _patentImageFile != null
+                  ? _purple.withOpacity(0.04)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _patentImageFile != null
+                    ? _purple.withOpacity(0.4)
+                    : const Color(0xFFCBD5E1),
+                width: 1.5,
+              ),
+            ),
+            child: _patentImageFile != null
+                ? Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: Image.file(
+                    _patentImageFile!,
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 8, right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(Icons.edit,
+                        color: Colors.white, size: 14),
+                  ),
+                ),
+                Positioned(
+                  bottom: 8, left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.check,
+                            color: Colors.white, size: 12),
+                        const SizedBox(width: 4),
+                        Text('Patent uploaded',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+                : Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              child: Column(
+                children: [
+                  const Icon(Icons.upload_file_outlined,
+                      size: 36, color: Color(0xFF94A3B8)),
+                  const SizedBox(height: 10),
+                  Text('Upload Patent Certificate',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF475569))),
+                  const SizedBox(height: 4),
+                  Text('JPG / PNG  •  Max 150 KB',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: const Color(0xFF94A3B8))),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── AI Suggested Price ────────────────────────────────────────────────────
   Widget _buildAISuggestedCard() {
-    // ── State 1: Not yet triggered — show the button ──────────────────
     if (!_aiLoading && !_aiPriceRevealed) {
       return GestureDetector(
         onTap: _getAISuggestedPrice,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          padding: const EdgeInsets.symmetric(
+              vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             color: _purple.withOpacity(0.04),
             borderRadius: BorderRadius.circular(12),
@@ -480,7 +800,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.auto_awesome, color: _purple, size: 18),
+              const Icon(Icons.auto_awesome,
+                  color: _purple, size: 18),
               const SizedBox(width: 8),
               Text(
                 'Get AI Suggested Price',
@@ -496,7 +817,6 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
       );
     }
 
-    // ── State 2: Loading — show progress + cycling messages ───────────
     if (_aiLoading) {
       return Container(
         width: double.infinity,
@@ -511,7 +831,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, color: _purple, size: 16),
+                const Icon(Icons.auto_awesome,
+                    color: _purple, size: 16),
                 const SizedBox(width: 6),
                 Text(
                   'AI is analyzing your idea...',
@@ -536,16 +857,17 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
             const SizedBox(height: 12),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 400),
-              transitionBuilder: (child, animation) => FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.2),
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
-                ),
-              ),
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.2),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
               child: Text(
                 _aiLoadingMessage,
                 key: ValueKey(_aiLoadingMessage),
@@ -561,7 +883,7 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
       );
     }
 
-    // ── State 3: Price revealed ───────────────────────────────────────
+    // Revealed
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -575,7 +897,8 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, color: _purple, size: 18),
+              const Icon(Icons.auto_awesome,
+                  color: _purple, size: 18),
               const SizedBox(width: 6),
               Text(
                 'AI Suggested Price',
@@ -586,33 +909,30 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
                 ),
               ),
               const Spacer(),
-              // Refresh — lets user re-run
               GestureDetector(
                 onTap: () => setState(() {
                   _aiPriceRevealed = false;
-                  _aiLoading = false;
+                  _aiLoading       = false;
                 }),
-                child: const Icon(Icons.refresh, color: _purple, size: 18),
+                child: const Icon(Icons.refresh,
+                    color: _purple, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            '\$50,000',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: _purple,
-            ),
-          ),
+          Text('\$50,000',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: _purple)),
           const SizedBox(height: 4),
           Text(
-            'Based on: idea uniqueness, market conditions, market size & competitor pricing',
+            'Based on: idea uniqueness, market conditions, '
+                'market size & competitor pricing',
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
-              color: _purple.withOpacity(0.8),
-              height: 1.4,
-            ),
+                fontSize: 12,
+                color: _purple.withOpacity(0.8),
+                height: 1.4),
           ),
         ],
       ),
@@ -627,13 +947,11 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
         '${_selectedDate!.year}'
         : 'dd-mm-yyyy';
 
-    final timeText = _selectedTime != null
-        ? _selectedTime!.format(context)
-        : '--:--';
+    final timeText =
+    _selectedTime != null ? _selectedTime!.format(context) : '--:--';
 
     return Row(
       children: [
-        // Date picker
         Expanded(
           child: GestureDetector(
             onTap: _pickDate,
@@ -643,29 +961,26 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                border:
+                Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.calendar_today_outlined,
                       size: 16, color: Color(0xFF9CA3AF)),
                   const SizedBox(width: 8),
-                  Text(
-                    dateText,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: _selectedDate != null
-                          ? const Color(0xFF111827)
-                          : const Color(0xFF9CA3AF),
-                    ),
-                  ),
+                  Text(dateText,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: _selectedDate != null
+                              ? const Color(0xFF111827)
+                              : const Color(0xFF9CA3AF))),
                 ],
               ),
             ),
           ),
         ),
         const SizedBox(width: 12),
-        // Time picker
         Expanded(
           child: GestureDetector(
             onTap: _pickTime,
@@ -675,22 +990,20 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
+                border:
+                Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: Row(
                 children: [
                   const Icon(Icons.access_time_outlined,
                       size: 16, color: Color(0xFF9CA3AF)),
                   const SizedBox(width: 8),
-                  Text(
-                    timeText,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: _selectedTime != null
-                          ? const Color(0xFF111827)
-                          : const Color(0xFF9CA3AF),
-                    ),
-                  ),
+                  Text(timeText,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: _selectedTime != null
+                              ? const Color(0xFF111827)
+                              : const Color(0xFF9CA3AF))),
                 ],
               ),
             ),
@@ -730,16 +1043,13 @@ class _SubmitIdeaScreenState extends State<SubmitIdeaScreen> {
           ),
           child: _submitting
               ? const SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(
-                strokeWidth: 2.5, color: Colors.white),
-          )
-              : Text(
-            'Submit Idea for Review',
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 16, fontWeight: FontWeight.w700),
-          ),
+              width: 22, height: 22,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.5, color: Colors.white))
+              : Text('Submit Idea for Review',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700)),
         ),
       ),
     );
@@ -764,9 +1074,8 @@ class _FieldLabel extends StatelessWidget {
         children: required
             ? [
           const TextSpan(
-            text: ' *',
-            style: TextStyle(color: Colors.redAccent),
-          )
+              text: ' *',
+              style: TextStyle(color: Colors.redAccent))
         ]
             : [],
       ),
@@ -793,8 +1102,9 @@ class _PatentOption extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           height: 50,
           decoration: BoxDecoration(
-            color:
-            selected ? _purple.withOpacity(0.08) : Colors.white,
+            color: selected
+                ? _purple.withOpacity(0.08)
+                : Colors.white,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: selected ? _purple : const Color(0xFFD1D5DB),
@@ -808,8 +1118,9 @@ class _PatentOption extends StatelessWidget {
                 fontSize: 14,
                 fontWeight:
                 selected ? FontWeight.w700 : FontWeight.w500,
-                color:
-                selected ? _purple : const Color(0xFF374151),
+                color: selected
+                    ? _purple
+                    : const Color(0xFF374151),
               ),
             ),
           ),
@@ -818,3 +1129,4 @@ class _PatentOption extends StatelessWidget {
     );
   }
 }
+

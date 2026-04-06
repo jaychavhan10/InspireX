@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
+import 'admin_login_screen.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const _gradientStart = Color(0xFF7C3AED);
@@ -23,14 +24,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final List<FocusNode> _pinFocusNodes =
   List.generate(6, (_) => FocusNode());
 
-  bool _isLoading = false;
-  String _pin = '';
+  bool   _isLoading = false;
+  String _pin       = '';
 
   @override
   void dispose() {
     _emailController.dispose();
     for (final c in _pinControllers) c.dispose();
-    for (final f in _pinFocusNodes) f.dispose();
+    for (final f in _pinFocusNodes)  f.dispose();
     super.dispose();
   }
 
@@ -47,58 +48,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_emailController.text.trim().isEmpty || _pin.length < 6) return;
-
     setState(() => _isLoading = true);
 
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
-        password: _pin, // 👈 using PIN as password
+        password: _pin,
       );
-
       if (!mounted) return;
-
       setState(() => _isLoading = false);
-
-      // ✅ Navigate to Home
       Navigator.pushReplacementNamed(context, '/home');
-
     } on FirebaseAuthException catch (e) {
       setState(() => _isLoading = false);
-
-      String message = "Login failed";
-
-      if (e.code == 'user-not-found') {
-        message = "User not found";
-      } else if (e.code == 'wrong-password') {
-        message = "Incorrect PIN";
-      } else if (e.code == 'invalid-email') {
-        message = "Invalid email";
-      }
-
+      String message = 'Login failed';
+      if (e.code == 'user-not-found')  message = 'User not found';
+      if (e.code == 'wrong-password')  message = 'Incorrect PIN';
+      if (e.code == 'invalid-email')   message = 'Invalid email';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
     }
   }
 
-  Future<void> registerUser() async {
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _pin,
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Account created ✅")),
-      );
-    } catch (e) {
-      print("Signup Error: $e");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Dynamic PIN box width to prevent overflow
+    final screenWidth = MediaQuery.of(context).size.width;
+    // cardPadding(18*2=36) + scrollPadding(24*2=48) + 5gaps(10) = 94
+    final pinBoxWidth =
+    ((screenWidth - 94) / 6).floorToDouble().clamp(36.0, 50.0);
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Container(
@@ -111,14 +90,41 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 24, vertical: 32),
             child: Column(
               children: [
                 const SizedBox(height: 24),
                 _buildLogo(),
                 const SizedBox(height: 40),
-                _buildCard(),
-                const SizedBox(height: 28),
+                _buildCard(pinBoxWidth),
+                const SizedBox(height: 20),
+                // ── Admin Login link ─────────────────────────────────
+                GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AdminLoginScreen()),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.admin_panel_settings_outlined,
+                          size: 15,
+                          color: Colors.white.withOpacity(0.75)),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Admin Login',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.75),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildFooter(),
               ],
             ),
@@ -128,69 +134,54 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Logo + branding ───────────────────────────────────────────────────────
   Widget _buildLogo() {
     return Column(
       children: [
-        // Glowing circle with lightbulb
         Stack(
           alignment: Alignment.center,
           children: [
             Container(
-              width: 110,
-              height: 110,
+              width: 110, height: 110,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withOpacity(0.15),
               ),
             ),
             Container(
-              width: 90,
-              height: 90,
+              width: 90, height: 90,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x557C3AED),
-                    blurRadius: 30,
-                    spreadRadius: 4,
-                  ),
+                      color: Color(0x557C3AED),
+                      blurRadius: 30,
+                      spreadRadius: 4),
                 ],
               ),
-              child: const Icon(
-                Icons.lightbulb_outline_rounded,
-                size: 44,
-                color: _gradientStart,
-              ),
+              child: const Icon(Icons.lightbulb_outline_rounded,
+                  size: 44, color: _gradientStart),
             ),
           ],
         ),
         const SizedBox(height: 20),
-        Text(
-          'InspireX',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 34,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            letterSpacing: 0.5,
-          ),
-        ),
+        Text('InspireX',
+            style: GoogleFonts.plusJakartaSans(
+                fontSize: 34,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.5)),
         const SizedBox(height: 6),
-        Text(
-          'Marketplace for Ideas',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            color: Colors.white.withOpacity(0.85),
-            letterSpacing: 0.8,
-          ),
-        ),
+        Text('Marketplace for Ideas',
+            style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.85),
+                letterSpacing: 0.8)),
       ],
     );
   }
 
-  // ── White card ────────────────────────────────────────────────────────────
-  Widget _buildCard() {
+  Widget _buildCard(double pinBoxWidth) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -198,25 +189,20 @@ class _LoginScreenState extends State<LoginScreen> {
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 40,
-            offset: const Offset(0, 12),
-          ),
+              color: Colors.black.withOpacity(0.18),
+              blurRadius: 40,
+              offset: const Offset(0, 12)),
         ],
       ),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Email / Phone ───────────────────────────────────────────────
-          Text(
-            'Email or Mobile Number',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF374151),
-            ),
-          ),
+          Text('Email or Mobile Number',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF374151))),
           const SizedBox(height: 6),
           TextField(
             controller: _emailController,
@@ -233,47 +219,42 @@ class _LoginScreenState extends State<LoginScreen> {
                   horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide:
+                const BorderSide(color: Color(0xFFE5E7EB)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide:
+                const BorderSide(color: Color(0xFFE5E7EB)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide:
-                const BorderSide(color: _gradientStart, width: 1.5),
+                borderSide: const BorderSide(
+                    color: _gradientStart, width: 1.5),
               ),
             ),
           ),
 
           const SizedBox(height: 22),
 
-          // ── 6-Digit PIN ─────────────────────────────────────────────────
-          Text(
-            '6-Digit PIN',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF374151),
-            ),
-          ),
+          Text('6-Digit PIN',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF374151))),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(6, (i) {
-              return Row(
-                children: [
-                  _buildPinBox(i),
-                  if (i != 5) const SizedBox(width: 2), // 👈 exact gap between boxes
-                ],
-              );
-            }),
+            children: List.generate(6, (i) => Row(
+              children: [
+                _buildPinBox(i, pinBoxWidth),
+                if (i != 5) const SizedBox(width: 2),
+              ],
+            )),
           ),
 
           const SizedBox(height: 28),
 
-          // ── Login button ────────────────────────────────────────────────
           SizedBox(
             width: double.infinity,
             height: 50,
@@ -287,10 +268,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: _gradientStart.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
+                      color: _gradientStart.withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4)),
                 ],
               ),
               child: TextButton(
@@ -302,25 +282,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      color: Colors.white, strokeWidth: 2),
-                )
-                    : Text(
-                  'Log In',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                    width: 20, height: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                    : Text('Log In',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
               ),
             ),
           ),
 
           const SizedBox(height: 22),
 
-          // ── Sign up link ────────────────────────────────────────────────
           Center(
             child: RichText(
               text: TextSpan(
@@ -332,16 +306,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: GestureDetector(
                       onTap: () => Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SignupScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const SignupScreen()),
                       ),
-                      child: Text(
-                        'Create one',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _gradientStart,
-                        ),
-                      ),
+                      child: Text('Create one',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _gradientStart)),
                     ),
                   ),
                 ],
@@ -353,10 +325,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Single PIN box ────────────────────────────────────────────────────────
-  Widget _buildPinBox(int index) {
+  Widget _buildPinBox(int index, double width) {
     return SizedBox(
-      width: 44,
+      width: width,
       height: 50,
       child: TextField(
         controller: _pinControllers[index],
@@ -367,10 +338,9 @@ class _LoginScreenState extends State<LoginScreen> {
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         style: GoogleFonts.plusJakartaSans(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: const Color(0xFF111827),
-        ),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF111827)),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
@@ -395,14 +365,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Footer ────────────────────────────────────────────────────────────────
   Widget _buildFooter() {
     return Text(
       'Secure login • Your ideas are protected',
       style: GoogleFonts.plusJakartaSans(
-        fontSize: 12,
-        color: Colors.white.withOpacity(0.65),
-      ),
+          fontSize: 12, color: Colors.white.withOpacity(0.65)),
       textAlign: TextAlign.center,
     );
   }

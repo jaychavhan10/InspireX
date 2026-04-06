@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'search_screen.dart';
 import 'submit_idea_screen.dart';
 import 'leaderboard_screen.dart';
@@ -7,10 +8,10 @@ import 'all_bidding_screen.dart';
 import 'profile_screen.dart';
 import 'idea_bidding_screen.dart';
 import 'idea_detail_screen.dart';
-// ─── Placeholder screens (stubs) ───────────────────────────────────────────
+import 'my_ideas_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-
-
+// ─── Placeholder screen ───────────────────────────────────────────────────────
 class LiveBiddingScreen extends StatelessWidget {
   const LiveBiddingScreen({super.key});
   @override
@@ -26,94 +27,128 @@ TextStyle _appBarTextStyle() => GoogleFonts.plusJakartaSans(
   fontSize: 18,
 );
 
-// ─── Data model ────────────────────────────────────────────────────────────
-class IdeaCard {
-  final String title;
-  final String description;
-  final int likes;
-  final double aiRating;
-  final String industry;
-  final bool isPatented;
+// ─── Constants ────────────────────────────────────────────────────────────────
+const _purple        = Color(0xFF7C3AED);
+const _gradientStart = Color(0xFF7C3AED);
+const _gradientEnd   = Color(0xFF3B82F6);
+const _bgColor       = Color(0xFFF8FAFC);
 
-  const IdeaCard({
-    required this.title,
-    required this.description,
-    required this.likes,
-    required this.aiRating,
-    required this.industry,
-    required this.isPatented,
-  });
+// ─── Dummy seed ideas (same as search_screen) ─────────────────────────────────
+final _seedIdeas = [
+  {
+    'title': 'AI-Powered Meal Planning Assistant',
+    'detailedSolution':
+    'An intelligent system that creates personalized meal plans based on dietary restrictions, budget, and local ingredient availability.',
+    'likes': 245,
+    'aiRating': 4.5,
+    'category': 'Food',
+    'isPatented': true,
+    'approvedAt': DateTime(2024, 1, 1).millisecondsSinceEpoch,
+    'contributorName': 'Rahul Sharma',
+    'isSeeded': true,
+  },
+  {
+    'title': 'Blockchain-Based Supply Chain Tracker',
+    'detailedSolution':
+    'Real-time tracking solution for supply chain management using blockchain technology to ensure transparency and reduce fraud.',
+    'likes': 189,
+    'aiRating': 4.2,
+    'category': 'Blockchain',
+    'isPatented': false,
+    'approvedAt': DateTime(2024, 1, 2).millisecondsSinceEpoch,
+    'contributorName': 'Priya Patel',
+    'isSeeded': true,
+  },
+  {
+    'title': 'Smart Home Energy Optimizer',
+    'detailedSolution':
+    'IoT device that learns your energy consumption patterns and automatically optimizes power usage to reduce bills by up to 40%.',
+    'likes': 312,
+    'aiRating': 4.8,
+    'category': 'IoT',
+    'isPatented': true,
+    'approvedAt': DateTime(2024, 1, 3).millisecondsSinceEpoch,
+    'contributorName': 'Amit Kumar',
+    'isSeeded': true,
+  },
+  {
+    'title': 'Virtual Reality Therapy Platform',
+    'detailedSolution':
+    'VR-based mental health platform providing immersive therapy sessions for anxiety, PTSD, and phobias with licensed therapists.',
+    'likes': 278,
+    'aiRating': 4.6,
+    'category': 'Healthcare',
+    'isPatented': false,
+    'approvedAt': DateTime(2024, 1, 4).millisecondsSinceEpoch,
+    'contributorName': 'Neha Gupta',
+    'isSeeded': true,
+  },
+  {
+    'title': 'AI Code Review Assistant',
+    'detailedSolution':
+    'Automated code review tool powered by machine learning that identifies bugs, security vulnerabilities, and suggests optimizations.',
+    'likes': 421,
+    'aiRating': 4.9,
+    'category': 'AI',
+    'isPatented': true,
+    'approvedAt': DateTime(2024, 1, 5).millisecondsSinceEpoch,
+    'contributorName': 'Vikram Singh',
+    'isSeeded': true,
+  },
+  {
+    'title': 'Sustainable Packaging Solution',
+    'detailedSolution':
+    'Biodegradable packaging material made from agricultural waste that decomposes within 30 days and costs less than plastic.',
+    'likes': 356,
+    'aiRating': 4.7,
+    'category': 'Sustainability',
+    'isPatented': false,
+    'approvedAt': DateTime(2024, 1, 6).millisecondsSinceEpoch,
+    'contributorName': 'Ananya Roy',
+    'isSeeded': true,
+  },
+  {
+    'title': 'Smart Restaurant Inventory System',
+    'detailedSolution':
+    'AI-driven inventory management for restaurants that predicts demand and reduces food waste by 50%.',
+    'likes': 198,
+    'aiRating': 4.3,
+    'category': 'Food',
+    'isPatented': false,
+    'approvedAt': DateTime(2024, 1, 7).millisecondsSinceEpoch,
+    'contributorName': 'Suresh Nair',
+    'isSeeded': true,
+  },
+  {
+    'title': 'Autonomous Delivery Drone Network',
+    'detailedSolution':
+    'Urban delivery system using autonomous drones for last-mile delivery, reducing delivery times by 70%.',
+    'likes': 334,
+    'aiRating': 4.4,
+    'category': 'Automobile',
+    'isPatented': true,
+    'approvedAt': DateTime(2024, 1, 8).millisecondsSinceEpoch,
+    'contributorName': 'Kavya Menon',
+    'isSeeded': true,
+  },
+];
+
+// ─── Seed helper — runs once; skips if seed docs already exist ────────────────
+Future<void> _seedApprovedIdeasIfEmpty() async {
+  final col = FirebaseFirestore.instance.collection('approved_ideas');
+  final existing = await col
+      .where('isSeeded', isEqualTo: true)
+      .limit(1)
+      .get();
+  if (existing.docs.isNotEmpty) return; // already seeded
+  final batch = FirebaseFirestore.instance.batch();
+  for (final idea in _seedIdeas) {
+    batch.set(col.doc(), idea);
+  }
+  await batch.commit();
 }
 
-// ─── Sample data ───────────────────────────────────────────────────────────
-final List<IdeaCard> _seedIdeas = [
-  IdeaCard(
-    title: 'AI-Powered Meal Planning Assistant',
-    description:
-    'An intelligent system that creates personalized meal plans based on dietary restrictions, budget, and nutritional goals.',
-    likes: 245,
-    aiRating: 4.5,
-    industry: 'Food',
-    isPatented: true,
-  ),
-  IdeaCard(
-    title: 'Blockchain-Based Supply Chain Tracker',
-    description:
-    'Real-time tracking solution for supply chain management using blockchain technology to ensure transparency.',
-    likes: 189,
-    aiRating: 4.2,
-    industry: 'Blockchain',
-    isPatented: false,
-  ),
-  IdeaCard(
-    title: 'Smart Home Energy Optimizer',
-    description:
-    'IoT device that learns your energy consumption patterns and automatically optimizes power usage across appliances.',
-    likes: 312,
-    aiRating: 4.7,
-    industry: 'IoT',
-    isPatented: true,
-  ),
-  IdeaCard(
-    title: 'AR-Powered Interior Design Tool',
-    description:
-    'Augmented reality application that lets users visualize furniture and décor in their actual living space before buying.',
-    likes: 178,
-    aiRating: 4.0,
-    industry: 'AR / VR',
-    isPatented: false,
-  ),
-];
-
-final List<IdeaCard> _moreIdeas = [
-  IdeaCard(
-    title: 'EduBot – Adaptive Learning Platform',
-    description:
-    'AI tutor that adapts content difficulty in real-time based on student performance metrics and learning pace.',
-    likes: 421,
-    aiRating: 4.8,
-    industry: 'EdTech',
-    isPatented: true,
-  ),
-  IdeaCard(
-    title: 'Carbon Footprint Wallet',
-    description:
-    'A digital wallet that calculates and offsets the carbon footprint of every transaction you make automatically.',
-    likes: 156,
-    aiRating: 3.9,
-    industry: 'CleanTech',
-    isPatented: false,
-  ),
-];
-
-// ─── Constants ─────────────────────────────────────────────────────────────
-const _purple = Color(0xFF7C3AED);
-const _purpleLight = Color(0xFF8B5CF6);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd = Color(0xFF3B82F6);
-const _bgColor = Color(0xFFF8FAFC);
-
-// ─── HomeScreen ────────────────────────────────────────────────────────────
+// ─── HomeScreen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -123,23 +158,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  int _selectedIndex = 0;
-  bool _drawerOpen = false;
-  late List<IdeaCard> _ideas;
-  bool _loadingMore = false;
-  bool _allLoaded = false;
+  int  _selectedIndex = 0;
+  bool _drawerOpen    = false;
+
   late AnimationController _drawerController;
-  late Animation<double> _drawerSlide;
+  late Animation<double>   _drawerSlide;
 
   static const double _navHeight = 64.0;
-  static const double _fabSize = 52.0;
-  // How far above the bottom the FAB circle centre sits
-  static const double _fabBottomOffset = (_navHeight / 2) + 4;
+  static const double _fabSize   = 52.0;
+
+  // ── Stream: approved_ideas ordered newest first ───────────────────────────
+  final Stream<QuerySnapshot<Map<String, dynamic>>> _approvedIdeasStream =
+  FirebaseFirestore.instance
+      .collection('approved_ideas')
+      .orderBy('approvedAt', descending: true)
+      .snapshots();
 
   @override
   void initState() {
     super.initState();
-    _ideas = List.from(_seedIdeas);
     _drawerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 280),
@@ -148,6 +185,8 @@ class _HomeScreenState extends State<HomeScreen>
       parent: _drawerController,
       curve: Curves.easeInOut,
     );
+    // Seed dummy ideas into Firestore if the collection is empty
+    _seedApprovedIdeasIfEmpty();
   }
 
   @override
@@ -168,17 +207,6 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() => _drawerOpen = false);
       _drawerController.reverse();
     }
-  }
-
-  Future<void> _refreshFeed() async {
-    if (_loadingMore || _allLoaded) return;
-    setState(() => _loadingMore = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
-    setState(() {
-      _ideas.addAll(_moreIdeas);
-      _loadingMore = false;
-      _allLoaded = true;
-    });
   }
 
   void _onBottomNavTap(int index) {
@@ -212,23 +240,19 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // ── 1. The actual Scaffold — nav bar + FAB stay exactly as before ──
         Scaffold(
           backgroundColor: _bgColor,
           body: _buildMainContent(),
           bottomNavigationBar: _buildBottomNav(),
           floatingActionButton: _buildFAB(),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButtonLocation:
+          FloatingActionButtonLocation.centerDocked,
         ),
-
-        // ── 2. Scrim — floats over Scaffold including nav bar ──────────────
         if (_drawerOpen)
           GestureDetector(
             onTap: _closeDrawer,
             child: Container(color: Colors.black.withOpacity(0.35)),
           ),
-
-        // ── 3. Drawer — topmost layer ──────────────────────────────────────
         AnimatedBuilder(
           animation: _drawerSlide,
           builder: (_, __) => Transform.translate(
@@ -248,75 +272,102 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           _buildAppBar(),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              children: [
-                Text(
-                  'Discover Ideas',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A2E),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Explore innovative startup concepts',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: const Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 18),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _approvedIdeasStream,
+              builder: (_, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: _purple),
+                  );
+                }
 
-                ..._ideas.map((idea) => GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => IdeaDetailScreen(
-                        title: idea.title,
-                        description: idea.description,
-                        likes: idea.likes,
-                        aiRating: idea.aiRating,
-                        industry: idea.industry,
-                        isPatented: idea.isPatented,
-                        contributorName: 'John Doe',
+                final docs = snap.data?.docs ?? [];
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  children: [
+                    Text(
+                      'Discover Ideas',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A2E),
                       ),
                     ),
-                  ),
-                  child: _IdeaCardWidget(
-                    idea: idea,
-                    onBidTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => IdeaBiddingScreen(ideaTitle: idea.title),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Explore innovative startup concepts',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: const Color(0xFF6B7280),
                       ),
                     ),
-                  ),
-                )),
+                    const SizedBox(height: 18),
 
-                const SizedBox(height: 8),
-
-                if (!_allLoaded)
-                  _RefreshFeedButton(
-                    loading: _loadingMore,
-                    onTap: _refreshFeed,
-                  ),
-
-                if (_allLoaded)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Center(
-                      child: Text(
-                        "You've seen all ideas 🎉",
-                        style: GoogleFonts.plusJakartaSans(
-                          color: const Color(0xFF9CA3AF),
-                          fontSize: 13,
+                    if (docs.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 48),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.lightbulb_outline,
+                                size: 52, color: Color(0xFFD1D5DB)),
+                            const SizedBox(height: 12),
+                            Text(
+                              'No ideas yet',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Be the first to submit an idea!',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: const Color(0xFF9CA3AF),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ),
-              ],
+                      )
+                    else
+                      ...docs.map((doc) {
+                        final d = doc.data();
+                        return GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => IdeaDetailScreen(
+                                ideaId:          doc.id,
+                                title:           d['title']       as String? ?? '',
+                                description:     d['detailedSolution'] as String? ??
+                                    d['problemStatement'] as String? ?? '',
+                                likes:           d['likes']       as int?    ?? 0,
+                                aiRating:        (d['aiRating']   as num?)?.toDouble() ?? 4.0,
+                                industry:        d['category']    as String? ?? '',
+                                isPatented:      d['isPatented']  as bool?   ?? false,
+                                contributorName: d['contributorName'] as String? ?? 'Innovator',
+                              ),
+                            ),
+                          ),
+                          child: _IdeaCardWidget(
+                            data: d,
+                            docId: doc.id,
+                            onBidTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => IdeaBiddingScreen(
+                                    ideaTitle: d['title'] as String? ?? ''),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -333,8 +384,7 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           GestureDetector(
             onTap: _toggleDrawer,
-            child:
-            const Icon(Icons.menu, color: Color(0xFF374151), size: 26),
+            child: const Icon(Icons.menu, color: Color(0xFF374151), size: 26),
           ),
           Expanded(
             child: Center(
@@ -365,8 +415,7 @@ class _HomeScreenState extends State<HomeScreen>
                   end: Alignment.bottomRight,
                 ),
               ),
-              child:
-              const Icon(Icons.person, color: Colors.white, size: 20),
+              child: const Icon(Icons.person, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -428,13 +477,11 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   GestureDetector(
                     onTap: _closeDrawer,
-                    child: const Icon(Icons.close,
-                        color: Colors.white, size: 22),
+                    child: const Icon(Icons.close, color: Colors.white, size: 22),
                   ),
                 ],
               ),
             ),
-
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -446,11 +493,26 @@ class _HomeScreenState extends State<HomeScreen>
                   _DrawerItem(
                       icon: Icons.trending_up_outlined,
                       label: 'My Ideas',
-                      onTap: _closeDrawer),
+                      onTap: () {
+                        _closeDrawer();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const MyIdeasScreen()),
+                        );
+                      }),
                   _DrawerItem(
                       icon: Icons.notifications_outlined,
                       label: 'Notifications',
-                      onTap: _closeDrawer),
+                      onTap: () {
+                        _closeDrawer();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => NotificationsScreen(uid: null),
+                          ),
+                        );
+                      }),
                   _DrawerItem(
                       icon: Icons.person_outline,
                       label: 'Profile',
@@ -473,17 +535,20 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
             ),
-
             const Divider(height: 1, color: Color(0xFFE5E7EB)),
             InkWell(
-              onTap: () {},
+              onTap: () async {
+                _closeDrawer();
+                await FirebaseAuth.instance.signOut();
+                if (!mounted) return;
+                Navigator.pushReplacementNamed(context, '/login');
+              },
               child: Padding(
                 padding:
                 const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 child: Row(
                   children: [
-                    const Icon(Icons.logout,
-                        color: Colors.redAccent, size: 22),
+                    const Icon(Icons.logout, color: Colors.redAccent, size: 22),
                     const SizedBox(width: 12),
                     Text('Logout',
                         style: GoogleFonts.plusJakartaSans(
@@ -556,10 +621,10 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ── FAB (Submit Idea) ─────────────────────────────────────────────────────
+  // ── FAB ───────────────────────────────────────────────────────────────────
   Widget _buildFAB() {
     return Transform.translate(
-      offset: const Offset(0, 12), // ← increase this to push further down
+      offset: const Offset(0, 12),
       child: GestureDetector(
         onTap: () => _onBottomNavTap(2),
         child: Column(
@@ -580,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen>
                     color: Color(0x557C3AED),
                     blurRadius: 10,
                     offset: Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
               child: const Icon(Icons.add, color: Colors.white, size: 30),
@@ -601,15 +666,29 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-// ─── Idea Card Widget ───────────────────────────────────────────────────────
+// ─── Idea Card Widget (Firestore-backed) ──────────────────────────────────────
 class _IdeaCardWidget extends StatelessWidget {
-  final IdeaCard idea;
+  final Map<String, dynamic> data;
+  final String docId;
   final VoidCallback onBidTap;
 
-  const _IdeaCardWidget({required this.idea, required this.onBidTap});
+  const _IdeaCardWidget({
+    required this.data,
+    required this.docId,
+    required this.onBidTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final title      = data['title']            as String? ?? 'Untitled';
+    final desc       = data['detailedSolution'] as String? ??
+        data['problemStatement']                as String? ?? '';
+    final likes      = data['likes']            as int?    ?? 0;
+    final aiRating   = (data['aiRating']        as num?)?.toDouble() ?? 4.0;
+    final industry   = data['category']         as String? ?? '';
+    final isPatented = data['isPatented']       as bool?   ?? false;
+    final contributor = data['contributorName'] as String? ?? 'Innovator';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -625,7 +704,6 @@ class _IdeaCardWidget extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 6,
-            spreadRadius: 0,
             offset: const Offset(0, 2),
           ),
         ],
@@ -635,8 +713,35 @@ class _IdeaCardWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Contributor row ─────────────────────────────────────────
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [_gradientStart, _gradientEnd],
+                    ),
+                  ),
+                  child: const Icon(Icons.person, color: Colors.white, size: 15),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  contributor,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
             Text(
-              idea.title,
+              title,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -644,9 +749,8 @@ class _IdeaCardWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-
             Text(
-              idea.description,
+              desc,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.plusJakartaSans(
@@ -657,12 +761,13 @@ class _IdeaCardWidget extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
+            // ── Likes + Rating ──────────────────────────────────────────
             Row(
               children: [
                 const Icon(Icons.thumb_up_alt_outlined,
                     size: 16, color: Color(0xFF6B7280)),
                 const SizedBox(width: 4),
-                Text('${idea.likes}',
+                Text('$likes',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: const Color(0xFF374151),
@@ -672,9 +777,9 @@ class _IdeaCardWidget extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13, color: const Color(0xFF6B7280))),
                 const SizedBox(width: 4),
-                _StarRating(rating: idea.aiRating),
+                _StarRating(rating: aiRating),
                 const SizedBox(width: 4),
-                Text(idea.aiRating.toStringAsFixed(1),
+                Text(aiRating.toStringAsFixed(1),
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         color: const Color(0xFF374151),
@@ -683,18 +788,22 @@ class _IdeaCardWidget extends StatelessWidget {
             ),
             const SizedBox(height: 10),
 
+            // ── Tags ────────────────────────────────────────────────────
             Row(
               children: [
-                _Tag(
-                    label: idea.industry,
+                if (industry.isNotEmpty)
+                  _Tag(
+                    label: industry,
                     color: const Color(0xFFFFF3E0),
-                    textColor: const Color(0xFFE65100)),
-                const SizedBox(width: 8),
-                _PatentTag(isPatented: idea.isPatented),
+                    textColor: const Color(0xFFE65100),
+                  ),
+                if (industry.isNotEmpty) const SizedBox(width: 8),
+                _PatentTag(isPatented: isPatented),
               ],
             ),
             const SizedBox(height: 14),
 
+            // ── CTA ─────────────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 46,
@@ -729,7 +838,7 @@ class _IdeaCardWidget extends StatelessWidget {
   }
 }
 
-// ─── Star Rating ────────────────────────────────────────────────────────────
+// ─── Star Rating ──────────────────────────────────────────────────────────────
 class _StarRating extends StatelessWidget {
   final double rating;
   const _StarRating({required this.rating});
@@ -740,7 +849,7 @@ class _StarRating extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
         final filled = i < rating.floor();
-        final half = !filled && (i < rating);
+        final half   = !filled && (i < rating);
         return Icon(
           half ? Icons.star_half : (filled ? Icons.star : Icons.star_border),
           size: 15,
@@ -751,7 +860,7 @@ class _StarRating extends StatelessWidget {
   }
 }
 
-// ─── Tag Widget ─────────────────────────────────────────────────────────────
+// ─── Tag ──────────────────────────────────────────────────────────────────────
 class _Tag extends StatelessWidget {
   final String label;
   final Color color;
@@ -776,7 +885,7 @@ class _Tag extends StatelessWidget {
   }
 }
 
-// ─── Patent Tag ─────────────────────────────────────────────────────────────
+// ─── Patent Tag ───────────────────────────────────────────────────────────────
 class _PatentTag extends StatelessWidget {
   final bool isPatented;
   const _PatentTag({required this.isPatented});
@@ -818,57 +927,7 @@ class _PatentTag extends StatelessWidget {
   }
 }
 
-// ─── Refresh Feed Button ────────────────────────────────────────────────────
-class _RefreshFeedButton extends StatelessWidget {
-  final bool loading;
-  final VoidCallback onTap;
-  const _RefreshFeedButton({required this.loading, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: GestureDetector(
-        onTap: loading ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: _purpleLight, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: _purple.withOpacity(0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              )
-            ],
-          ),
-          child: loading
-              ? const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: _purple),
-          )
-              : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.refresh, color: _purple, size: 18),
-              const SizedBox(width: 6),
-              Text('Refresh Feed',
-                  style: GoogleFonts.plusJakartaSans(
-                      color: _purple,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Drawer Item ────────────────────────────────────────────────────────────
+// ─── Drawer Item ──────────────────────────────────────────────────────────────
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -898,7 +957,7 @@ class _DrawerItem extends StatelessWidget {
   }
 }
 
-// ─── Bottom Nav Item ────────────────────────────────────────────────────────
+// ─── Bottom Nav Item ──────────────────────────────────────────────────────────
 class _BottomNavItem extends StatelessWidget {
   final IconData icon;
   final String label;
