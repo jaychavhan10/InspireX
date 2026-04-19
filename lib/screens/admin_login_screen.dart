@@ -1,22 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'admin_home_screen.dart';
-
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientMid   = Color(0xFF8B5CF6);
-const _gradientEnd   = Color(0xFF3B82F6);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HOW TO ADD ADMINS IN FIRESTORE:
-// Collection: "admins"
-// Document ID: any (e.g. "admin1")
-// Fields:
-//   email: "admin@inspirex.com"
-//   password: "yourpassword"  ← plain text (or hashed in production)
-//   name: "Admin Name"
-// ─────────────────────────────────────────────────────────────────────────────
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -101,10 +86,12 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       );
     } catch (e) {
       setState(() => _isLoading = false);
+      if (!mounted) return;
+      final errorColor = Theme.of(context).colorScheme.error;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Login failed. Please try again.',
             style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: errorColor,
         behavior: SnackBarBehavior.floating,
         shape:
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -114,12 +101,16 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [_gradientStart, _gradientMid, _gradientEnd],
+            colors: [colorScheme.primary, colorScheme.secondary, colorScheme.tertiary],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -139,28 +130,28 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                       width: 38, height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.2),
+                        color: colorScheme.onPrimary.withOpacity(0.2),
                       ),
-                      child: const Icon(Icons.arrow_back,
-                          color: Colors.white, size: 20),
+                      child: Icon(Icons.arrow_back,
+                          color: colorScheme.onPrimary, size: 20),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Logo
-                _buildLogo(),
+                _buildLogo(colorScheme),
                 const SizedBox(height: 36),
 
                 // Card
-                _buildCard(),
+                _buildCard(colorScheme, isDark),
                 const SizedBox(height: 24),
 
                 Text(
                   'Admin access only • Authorised personnel',
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.6)),
+                      color: colorScheme.onPrimary.withOpacity(0.6)),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -171,7 +162,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 
-  Widget _buildLogo() {
+  Widget _buildLogo(ColorScheme colorScheme) {
     return Column(
       children: [
         Stack(
@@ -181,23 +172,23 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               width: 100, height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.15),
+                color: colorScheme.onPrimary.withOpacity(0.15),
               ),
             ),
             Container(
               width: 80, height: 80,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
+                color: colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                      color: Color(0x557C3AED),
+                      color: colorScheme.primary.withOpacity(0.3),
                       blurRadius: 28,
                       spreadRadius: 4),
                 ],
               ),
-              child: const Icon(Icons.admin_panel_settings_outlined,
-                  size: 38, color: _gradientStart),
+              child: Icon(Icons.admin_panel_settings_outlined,
+                  size: 38, color: colorScheme.primary),
             ),
           ],
         ),
@@ -206,26 +197,26 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: colorScheme.onPrimary,
                 letterSpacing: 0.5)),
         const SizedBox(height: 4),
         Text('Secure Admin Portal',
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
-                color: Colors.white.withOpacity(0.8))),
+                color: colorScheme.onPrimary.withOpacity(0.8))),
       ],
     );
   }
 
-  Widget _buildCard() {
+  Widget _buildCard(ColorScheme colorScheme, bool isDark) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.97),
+        color: isDark ? colorScheme.surface : colorScheme.surface.withOpacity(0.97),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.18),
+              color: colorScheme.scrim.withOpacity(0.18),
               blurRadius: 40,
               offset: const Offset(0, 12)),
         ],
@@ -239,55 +230,56 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             padding: const EdgeInsets.symmetric(
                 horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: _gradientStart.withOpacity(0.08),
+              color: colorScheme.primary.withOpacity(0.08),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: _gradientStart.withOpacity(0.3)),
+                  color: colorScheme.primary.withOpacity(0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.shield_outlined,
-                    color: _gradientStart, size: 14),
+                Icon(Icons.shield_outlined,
+                    color: colorScheme.primary, size: 14),
                 const SizedBox(width: 5),
                 Text('Admin Login',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _gradientStart)),
+                        color: colorScheme.primary)),
               ],
             ),
           ),
           const SizedBox(height: 20),
 
           // Email field
-          _fieldLabel('Admin Email'),
+          _fieldLabel('Admin Email', colorScheme),
           const SizedBox(height: 6),
           _buildTextField(
             controller: _emailController,
             hint: 'admin@inspirex.com',
             keyboardType: TextInputType.emailAddress,
             error: _emailError,
+            colorScheme: colorScheme,
           ),
           if (_emailError.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(_emailError,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: Colors.redAccent)),
+                      fontSize: 11, color: colorScheme.error)),
             ),
           const SizedBox(height: 16),
 
           // Password field
-          _fieldLabel('Password'),
+          _fieldLabel('Password', colorScheme),
           const SizedBox(height: 6),
-          _buildPasswordField(),
+          _buildPasswordField(colorScheme),
           if (_passwordError.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(_passwordError,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: Colors.redAccent)),
+                      fontSize: 11, color: colorScheme.error)),
             ),
           const SizedBox(height: 28),
 
@@ -297,15 +289,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             height: 50,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                gradient: LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                      color: _gradientStart.withOpacity(0.4),
+                      color: colorScheme.primary.withOpacity(0.4),
                       blurRadius: 12,
                       offset: const Offset(0, 4)),
                 ],
@@ -313,15 +305,15 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               child: TextButton(
                 onPressed: _isLoading ? null : _handleAdminLogin,
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
+                  foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                     width: 20, height: 20,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
+                        color: colorScheme.onPrimary, strokeWidth: 2))
                     : Text('Login as Admin',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
@@ -334,66 +326,67 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     );
   }
 
-  Widget _fieldLabel(String text) => Text(text,
+  Widget _fieldLabel(String text, ColorScheme colorScheme) => Text(text,
       style: GoogleFonts.plusJakartaSans(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF374151)));
+          color: colorScheme.onSurface));
 
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
     TextInputType keyboardType = TextInputType.text,
     String error = '',
+    required ColorScheme colorScheme,
   }) {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
       style: GoogleFonts.plusJakartaSans(
-          fontSize: 14, color: const Color(0xFF111827)),
+          fontSize: 14, color: colorScheme.onSurface),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 14, color: const Color(0xFF9CA3AF)),
+            fontSize: 14, color: colorScheme.onSurfaceVariant.withOpacity(0.6)),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.4),
         contentPadding: const EdgeInsets.symmetric(
             horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
               color: error.isNotEmpty
-                  ? Colors.redAccent
-                  : const Color(0xFFE5E7EB)),
+                  ? colorScheme.error
+                  : colorScheme.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
               color: error.isNotEmpty
-                  ? Colors.redAccent
-                  : const Color(0xFFE5E7EB)),
+                  ? colorScheme.error
+                  : colorScheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-              color: _gradientStart, width: 1.5),
+          borderSide: BorderSide(
+              color: colorScheme.primary, width: 1.5),
         ),
       ),
     );
   }
 
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField(ColorScheme colorScheme) {
     return TextField(
       controller: _passwordController,
       obscureText: _obscurePass,
       style: GoogleFonts.plusJakartaSans(
-          fontSize: 14, color: const Color(0xFF111827)),
+          fontSize: 14, color: colorScheme.onSurface),
       decoration: InputDecoration(
         hintText: 'Enter your password',
         hintStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 14, color: const Color(0xFF9CA3AF)),
+            fontSize: 14, color: colorScheme.onSurfaceVariant.withOpacity(0.6)),
         filled: true,
-        fillColor: const Color(0xFFF8FAFC),
+        fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.4),
         contentPadding: const EdgeInsets.symmetric(
             horizontal: 16, vertical: 14),
         suffixIcon: GestureDetector(
@@ -403,7 +396,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             _obscurePass
                 ? Icons.visibility_outlined
                 : Icons.visibility_off_outlined,
-            color: const Color(0xFF9CA3AF),
+            color: colorScheme.onSurfaceVariant,
             size: 20,
           ),
         ),
@@ -411,20 +404,20 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
               color: _passwordError.isNotEmpty
-                  ? Colors.redAccent
-                  : const Color(0xFFE5E7EB)),
+                  ? colorScheme.error
+                  : colorScheme.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
               color: _passwordError.isNotEmpty
-                  ? Colors.redAccent
-                  : const Color(0xFFE5E7EB)),
+                  ? colorScheme.error
+                  : colorScheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-              color: _gradientStart, width: 1.5),
+          borderSide: BorderSide(
+              color: colorScheme.primary, width: 1.5),
         ),
       ),
     );

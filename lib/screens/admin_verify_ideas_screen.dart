@@ -2,11 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-const _purple        = Color(0xFF7C3AED);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd   = Color(0xFF3B82F6);
-const _bgColor       = Color(0xFFF8FAFC);
+import '../utils/transitions.dart';
 
 // ─── AdminVerifyIdeasScreen ───────────────────────────────────────────────────
 class AdminVerifyIdeasScreen extends StatefulWidget {
@@ -32,19 +28,21 @@ class _AdminVerifyIdeasScreenState extends State<AdminVerifyIdeasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: colorScheme.surface,
       body: Column(
         children: [
-          _buildAppBar(),
-          _buildSearchBar(),
+          _buildAppBar(context, colorScheme),
+          _buildSearchBar(context, colorScheme),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _stream,
               builder: (_, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator(color: _purple));
+                  return Center(
+                      child: CircularProgressIndicator(color: colorScheme.primary));
                 }
 
                 if (snap.hasError) {
@@ -54,7 +52,7 @@ class _AdminVerifyIdeasScreenState extends State<AdminVerifyIdeasScreen> {
                       child: Text(
                         'Error: ${snap.error}',
                         style: GoogleFonts.plusJakartaSans(
-                            color: const Color(0xFF6B7280), fontSize: 13),
+                            color: colorScheme.onSurfaceVariant, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -82,20 +80,20 @@ class _AdminVerifyIdeasScreenState extends State<AdminVerifyIdeasScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.lightbulb_outline,
-                            size: 48, color: Color(0xFFD1D5DB)),
+                        Icon(Icons.lightbulb_outline,
+                            size: 44, color: colorScheme.outlineVariant),
                         const SizedBox(height: 12),
                         Text('No ideas found.',
                             style: GoogleFonts.plusJakartaSans(
-                                fontSize: 14,
-                                color: const Color(0xFF9CA3AF))),
+                                fontSize: 13,
+                                color: colorScheme.onSurfaceVariant)),
                       ],
                     ),
                   );
                 }
 
                 return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                   itemCount: docs.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (_, i) => _IdeaCard(doc: docs[i]),
@@ -108,73 +106,73 @@ class _AdminVerifyIdeasScreenState extends State<AdminVerifyIdeasScreen> {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(BuildContext context, ColorScheme colorScheme) {
     return SafeArea(
       bottom: false,
       child: Container(
-        color: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        color: colorScheme.surface,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back,
-                  color: Color(0xFF374151), size: 22),
+              icon: Icon(Icons.arrow_back,
+                  color: colorScheme.onSurface, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
             Expanded(
               child: Center(
                 child: Text('Verify Ideas',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
+                        fontSize: 17,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF111827))),
+                        color: colorScheme.onSurface)),
               ),
             ),
-            const SizedBox(width: 48),
+            const SizedBox(width: 44),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(BuildContext context, ColorScheme colorScheme) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: TextField(
         controller: _searchController,
         onChanged: (v) => setState(() => _search = v),
         style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, color: const Color(0xFF111827)),
+            fontSize: 13, color: colorScheme.onSurface),
         decoration: InputDecoration(
           hintText: 'Search by idea title...',
           hintStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 14, color: const Color(0xFF9CA3AF)),
+              fontSize: 13, color: colorScheme.onSurfaceVariant),
           prefixIcon:
-          const Icon(Icons.search, color: Color(0xFF9CA3AF), size: 20),
+          Icon(Icons.search, color: colorScheme.onSurfaceVariant, size: 18),
           suffixIcon: _search.isNotEmpty
               ? GestureDetector(
               onTap: () {
                 _searchController.clear();
                 setState(() => _search = '');
               },
-              child: const Icon(Icons.close,
-                  color: Color(0xFF9CA3AF), size: 18))
+              child: Icon(Icons.close,
+                  color: colorScheme.onSurfaceVariant, size: 16))
               : null,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: colorScheme.surface,
           contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _purple, width: 1.5),
+            borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
           ),
         ),
       ),
@@ -187,12 +185,12 @@ class _IdeaCard extends StatelessWidget {
   final QueryDocumentSnapshot<Map<String, dynamic>> doc;
   const _IdeaCard({required this.doc});
 
-  Color _statusColor(String? s) {
+  Color _statusColor(BuildContext context, String? s) {
     switch (s) {
       case 'approved': return const Color(0xFF16A34A);
-      case 'rejected': return Colors.redAccent;
-      case 'on_hold':  return const Color(0xFFF59E0B);
-      default:         return const Color(0xFF6B7280);
+      case 'rejected': return Theme.of(context).colorScheme.error;
+      case 'on_hold':  return const Color(0xFFFBBF24);
+      default:         return Theme.of(context).colorScheme.onSurfaceVariant;
     }
   }
 
@@ -207,6 +205,7 @@ class _IdeaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme  = Theme.of(context).colorScheme;
     final data         = doc.data();
     final title        = data['title']       as String? ?? 'Untitled';
     final category     = data['category']    as String? ?? '';
@@ -217,25 +216,19 @@ class _IdeaCard extends StatelessWidget {
         (data['patentImageBase64'] as String?)?.isNotEmpty == true;
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              AdminIdeaDetailScreen(docId: doc.id, data: data),
-        ),
-      ),
+      onTap: () => navigateSmoothly(context, AdminIdeaDetailScreen(docId: doc.id, data: data)),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.07),
+                color: colorScheme.scrim.withOpacity(0.07),
                 blurRadius: 10,
                 offset: const Offset(0, 3)),
           ],
         ),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -244,23 +237,23 @@ class _IdeaCard extends StatelessWidget {
                 Expanded(
                   child: Text(title,
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF111827))),
+                          color: colorScheme.onSurface)),
                 ),
                 const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                      horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: _statusColor(status).withOpacity(0.1),
+                    color: _statusColor(context, status).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(_statusLabel(status),
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: _statusColor(status))),
+                          color: _statusColor(context, status))),
                 ),
               ],
             ),
@@ -268,32 +261,33 @@ class _IdeaCard extends StatelessWidget {
             Row(
               children: [
                 if (category.isNotEmpty) ...[
-                  _tag(category, _purple),
+                  _tag(context, category, colorScheme.primary),
                   const SizedBox(width: 6),
                 ],
                 _tag(
+                  context,
                   patented ? 'Patented' : 'Not Patented',
                   patented
                       ? const Color(0xFF16A34A)
-                      : const Color(0xFF6B7280),
+                      : colorScheme.onSurfaceVariant,
                 ),
                 if (hasPatentImg) ...[
                   const SizedBox(width: 6),
-                  _tag('📄 Patent Doc', const Color(0xFF3B82F6)),
+                  _tag(context, '📄 Patent Doc', colorScheme.secondary),
                 ],
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.attach_money,
-                    size: 14, color: Color(0xFF6B7280)),
+                Icon(Icons.attach_money,
+                    size: 13, color: colorScheme.onSurfaceVariant),
                 Text('Base: \$$price',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, color: const Color(0xFF6B7280))),
+                        fontSize: 11, color: colorScheme.onSurfaceVariant)),
                 const Spacer(),
-                const Icon(Icons.chevron_right,
-                    color: Color(0xFFD1D5DB), size: 18),
+                Icon(Icons.chevron_right,
+                    color: colorScheme.outlineVariant, size: 16),
               ],
             ),
           ],
@@ -302,7 +296,7 @@ class _IdeaCard extends StatelessWidget {
     );
   }
 
-  Widget _tag(String text, Color color) => Container(
+  Widget _tag(BuildContext context, String text, Color color) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
     decoration: BoxDecoration(
       color: color.withOpacity(0.1),
@@ -310,7 +304,7 @@ class _IdeaCard extends StatelessWidget {
     ),
     child: Text(text,
         style: GoogleFonts.plusJakartaSans(
-            fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+            fontSize: 10, fontWeight: FontWeight.w600, color: color)),
   );
 }
 
@@ -373,6 +367,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
   }
 
   Future<void> _updateStatus(String status) async {
+    final colorScheme = Theme.of(context).colorScheme;
     setState(() => _saving = true);
     try {
       final uid       = widget.data['uid']   as String?;
@@ -426,7 +421,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
             'interested':   widget.data['interested'] ?? 0,
             // Remove sensitive base64 patent image from public copy
             'patentImageBase64': FieldValue.delete(),
-          });
+          }, SetOptions(merge: true));
         } else {
           // If previously approved and now rejected/on_hold, remove from feed
           await FirebaseFirestore.instance
@@ -443,7 +438,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Idea status updated to $status',
             style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-        backgroundColor: _purple,
+        backgroundColor: colorScheme.primary,
         behavior: SnackBarBehavior.floating,
         shape:
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -453,7 +448,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Failed to update: $e',
             style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: colorScheme.error,
         behavior: SnackBarBehavior.floating,
         shape:
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -463,132 +458,133 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final d = widget.data;
 
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: colorScheme.surface,
       body: Column(
         children: [
           SafeArea(
             bottom: false,
             child: Container(
-              color: Colors.white,
+              color: colorScheme.surface,
               padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 12),
+                  horizontal: 8, vertical: 8),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back,
-                        color: Color(0xFF374151), size: 22),
+                    icon: Icon(Icons.arrow_back,
+                        color: colorScheme.onSurfaceVariant, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Expanded(
                     child: Center(
                       child: Text('Idea Details',
                           style: GoogleFonts.plusJakartaSans(
-                              fontSize: 18,
+                              fontSize: 17,
                               fontWeight: FontWeight.w700,
-                              color: const Color(0xFF111827))),
+                              color: colorScheme.onSurface)),
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  const SizedBox(width: 44),
                 ],
               ),
             ),
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               children: [
-                _infoCard('Idea Information', [
-                  _row('Title', d['title']),
-                  _row('Category', d['category']),
-                  _row('Patented',
+                _infoCard(context, colorScheme, 'Idea Information', [
+                  _row(context, colorScheme, 'Title', d['title']),
+                  _row(context, colorScheme, 'Category', d['category']),
+                  _row(context, colorScheme, 'Patented',
                       (d['isPatented'] as bool? ?? false) ? 'Yes' : 'No'),
-                  _row('Base Price', '\$${d['basePrice'] ?? 0}'),
+                  _row(context, colorScheme, 'Base Price', '\$${d['basePrice'] ?? 0}'),
                   if ((d['aiSuggestedPrice'] as int?) != null)
-                    _row('AI Suggested', '\$${d['aiSuggestedPrice']}'),
-                  _row('Bidding Date', d['biddingDate']),
-                  _row('Bidding Time', d['biddingTime']),
+                    _row(context, colorScheme, 'AI Suggested', '\$${d['aiSuggestedPrice']}'),
+                  _row(context, colorScheme, 'Bidding Date', d['biddingDate']),
+                  _row(context, colorScheme, 'Bidding Time', d['biddingTime']),
                 ]),
-                const SizedBox(height: 14),
-                _textCard('Problem Statement', d['problemStatement']),
-                const SizedBox(height: 14),
-                _textCard('Detailed Solution', d['detailedSolution']),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                _textCard(context, colorScheme, 'Problem Statement', d['problemStatement']),
+                const SizedBox(height: 12),
+                _textCard(context, colorScheme, 'Detailed Solution', d['detailedSolution']),
+                const SizedBox(height: 12),
                 if (d['isPatented'] == true)
-                  _patentImageCard(d['patentImageBase64']),
-                const SizedBox(height: 14),
+                  _patentImageCard(context, colorScheme, d['patentImageBase64']),
+                const SizedBox(height: 12),
 
                 // ── Reason / Note field ──────────────────────────────────
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colorScheme.surface,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
+                          color: colorScheme.scrim.withOpacity(0.06),
                           blurRadius: 10,
                           offset: const Offset(0, 3))
                     ],
                   ),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Reason / Note (optional)',
                           style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF374151))),
+                              color: colorScheme.onSurfaceVariant)),
                       const SizedBox(height: 4),
                       Text(
                         'This note will be sent to the user as part of their notification.',
                         style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
-                            color: const Color(0xFF9CA3AF)),
+                            color: colorScheme.onSurfaceVariant.withOpacity(0.7)),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _reasonController,
                         maxLines: 3,
                         style: GoogleFonts.plusJakartaSans(
-                            fontSize: 13,
-                            color: const Color(0xFF111827)),
+                            fontSize: 12,
+                            color: colorScheme.onSurface),
                         decoration: InputDecoration(
                           hintText: 'Add a reason for your decision...',
                           hintStyle: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              color: const Color(0xFF9CA3AF)),
+                              fontSize: 12,
+                              color: colorScheme.onSurfaceVariant),
                           filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
+                          fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
                           contentPadding: const EdgeInsets.all(12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                color: Color(0xFFE5E7EB)),
+                            borderSide: BorderSide(
+                                color: colorScheme.outlineVariant),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                color: Color(0xFFE5E7EB)),
+                            borderSide: BorderSide(
+                                color: colorScheme.outlineVariant),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                color: _purple, width: 1.5),
+                            borderSide: BorderSide(
+                                color: colorScheme.primary, width: 1.5),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 // ── Action buttons ───────────────────────────────────────
                 if (_saving)
-                  const Center(
-                      child: CircularProgressIndicator(color: _purple))
+                  Center(
+                      child: CircularProgressIndicator(color: colorScheme.primary))
                 else
                   Column(
                     children: [
@@ -605,7 +601,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
                             child: _actionButtonSmall(
                               label: 'On Hold',
                               icon: Icons.pause_circle_outline,
-                              color: const Color(0xFFF59E0B),
+                              color: const Color(0xFFFBBF24),
                               onTap: () => _updateStatus('on_hold'),
                             ),
                           ),
@@ -614,7 +610,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
                             child: _actionButtonSmall(
                               label: 'Reject',
                               icon: Icons.cancel_outlined,
-                              color: Colors.redAccent,
+                              color: colorScheme.error,
                               onTap: () => _updateStatus('rejected'),
                             ),
                           ),
@@ -630,27 +626,27 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
     );
   }
 
-  Widget _infoCard(String title, List<Widget> rows) {
+  Widget _infoCard(BuildContext context, ColorScheme colorScheme, String title, List<Widget> rows) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: colorScheme.scrim.withOpacity(0.06),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF111827))),
+                  color: colorScheme.onSurface)),
           const SizedBox(height: 12),
           ...rows,
         ],
@@ -658,61 +654,61 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
     );
   }
 
-  Widget _textCard(String title, String? text) {
+  Widget _textCard(BuildContext context, ColorScheme colorScheme, String title, String? text) {
     if (text == null || text.isEmpty) return const SizedBox();
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: colorScheme.scrim.withOpacity(0.06),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF111827))),
+                  color: colorScheme.onSurface)),
           const SizedBox(height: 8),
           Text(text,
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: const Color(0xFF374151),
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
                   height: 1.5)),
         ],
       ),
     );
   }
 
-  Widget _patentImageCard(String? base64Str) {
+  Widget _patentImageCard(BuildContext context, ColorScheme colorScheme, String? base64Str) {
     if (base64Str == null || base64Str.isEmpty) {
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: colorScheme.scrim.withOpacity(0.06),
                 blurRadius: 10,
                 offset: const Offset(0, 3))
           ],
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            const Icon(Icons.image_not_supported_outlined,
-                color: Color(0xFFD1D5DB), size: 22),
+            Icon(Icons.image_not_supported_outlined,
+                color: colorScheme.outlineVariant, size: 20),
             const SizedBox(width: 10),
             Text('Patent document not uploaded',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: const Color(0xFF9CA3AF))),
+                    fontSize: 12, color: colorScheme.onSurfaceVariant)),
           ],
         ),
       );
@@ -721,29 +717,29 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
       final bytes = base64Decode(base64Str.replaceAll(RegExp(r'\s'), ''));
       return Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: colorScheme.scrim.withOpacity(0.06),
                 blurRadius: 10,
                 offset: const Offset(0, 3))
           ],
         ),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.verified_outlined,
-                    color: _purple, size: 16),
+                Icon(Icons.verified_outlined,
+                    color: colorScheme.primary, size: 14),
                 const SizedBox(width: 6),
                 Text('Patent Certificate',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF111827))),
+                        color: colorScheme.onSurface)),
               ],
             ),
             const SizedBox(height: 10),
@@ -752,14 +748,14 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
               child: Image.memory(
                 bytes,
                 width: double.infinity,
-                height: 180,
+                height: 160,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
                   height: 80,
-                  color: const Color(0xFFF1F5F9),
-                  child: const Center(
+                  color: colorScheme.surfaceContainerHighest,
+                  child: Center(
                     child: Icon(Icons.broken_image_outlined,
-                        color: Color(0xFF9CA3AF)),
+                        color: colorScheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -772,7 +768,7 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
     }
   }
 
-  Widget _row(String label, dynamic value) {
+  Widget _row(BuildContext context, ColorScheme colorScheme, String label, dynamic value) {
     if (value == null || (value is String && value.isEmpty)) {
       return const SizedBox();
     }
@@ -782,19 +778,19 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 110,
+            width: 100,
             child: Text(label,
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: const Color(0xFF6B7280),
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w500)),
           ),
           Expanded(
             child: Text('$value',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF111827))),
+                    color: colorScheme.onSurface)),
           ),
         ],
       ),
@@ -807,18 +803,19 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 48,
       child: ElevatedButton.icon(
         onPressed: onTap,
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: 16),
         label: Text(label,
             style: GoogleFonts.plusJakartaSans(
-                fontSize: 15, fontWeight: FontWeight.w700)),
+                fontSize: 14, fontWeight: FontWeight.w700)),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
-          foregroundColor: Colors.white,
+          foregroundColor: colorScheme.onPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12)),
@@ -834,13 +831,13 @@ class _AdminIdeaDetailScreenState extends State<AdminIdeaDetailScreen> {
     required VoidCallback onTap,
   }) {
     return SizedBox(
-      height: 46,
+      height: 44,
       child: OutlinedButton.icon(
         onPressed: onTap,
-        icon: Icon(icon, size: 16, color: color),
+        icon: Icon(icon, size: 14, color: color),
         label: Text(label,
             style: GoogleFonts.plusJakartaSans(
-                fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+                fontSize: 12, fontWeight: FontWeight.w700, color: color)),
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: color, width: 1.5),
           shape: RoundedRectangleBorder(

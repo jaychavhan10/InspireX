@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-// ─── Constants (mirrors home_screen.dart) ──────────────────────────────────
-const _purple = Color(0xFF7C3AED);
-const _purpleLight = Color(0xFF8B5CF6);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd = Color(0xFF3B82F6);
-const _bgColor = Color(0xFFF8FAFC);
+import '../theme_manager.dart';
+import 'search_screen.dart';
+import 'leaderboard_screen.dart';
+import 'submit_idea_screen.dart';
+import 'my_ideas_screen.dart';
+import 'profile_screen.dart';
+import 'idea_bidding_screen.dart';
+import 'idea_detail_screen.dart';
+import '../utils/transitions.dart';
 
 // ─── Data model ─────────────────────────────────────────────────────────────
 enum BidStatus { live, upcoming, past }
@@ -116,6 +118,38 @@ final List<BiddingItem> _allBiddings = [
   ),
 ];
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+// Category color mapping helpers (consistent with home_screen and idea_detail)
+Color _getCategoryTagBg(String cat, ColorScheme colorScheme, bool isDark) {
+  final map = <String, Color>{
+    'Food':          const Color(0xFFFFF3E0),
+    'AI':            const Color(0xFFF3E8FF),
+    'Automobile':    const Color(0xFFEFF6FF),
+    'Healthcare':    const Color(0xFFFEF2F2),
+    'Blockchain':    const Color(0xFFECFEFF),
+    'IoT':           const Color(0xFFF0FDF4),
+    'Sustainability':const Color(0xFFECFDF5),
+  };
+  final base = map[cat] ?? colorScheme.surfaceContainerHighest;
+  if (isDark) return base.withOpacity(0.15);
+  return base;
+}
+
+Color _getCategoryTagText(String cat, ColorScheme colorScheme, bool isDark) {
+  final map = <String, Color>{
+    'Food':          const Color(0xFFE65100),
+    'AI':            const Color(0xFF6D28D9),
+    'Automobile':    const Color(0xFF1D4ED8),
+    'Healthcare':    const Color(0xFFDC2626),
+    'Blockchain':    const Color(0xFF0E7490),
+    'IoT':           const Color(0xFF15803D),
+    'Sustainability':const Color(0xFF047857),
+  };
+  final base = map[cat] ?? colorScheme.onSurfaceVariant;
+  if (isDark) return base.withOpacity(0.9);
+  return base;
+}
+
 // ─── AllBiddingScreen ─────────────────────────────────────────────────────────
 class AllBiddingScreen extends StatefulWidget {
   const AllBiddingScreen({super.key});
@@ -168,7 +202,20 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
 
   void _onBottomNavTap(int index) {
     if (index == 4) return; // already on bidding
-    Navigator.popUntil(context, (route) => route.isFirst);
+    switch (index) {
+      case 0:
+        Navigator.popUntil(context, (r) => r.isFirst);
+        break;
+      case 1:
+        navigateSmoothly(context, const SearchScreen(), replacement: true);
+        break;
+      case 2:
+        navigateSmoothly(context, const SubmitIdeaScreen());
+        break;
+      case 3:
+        navigateSmoothly(context, const LeaderboardScreen(), replacement: true);
+        break;
+    }
   }
 
   List<BiddingItem> get _filtered =>
@@ -199,14 +246,18 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Stack(
       children: [
         // ── 1. Scaffold ───────────────────────────────────────────────────
         Scaffold(
-          backgroundColor: _bgColor,
-          body: _buildMainContent(),
-          bottomNavigationBar: _buildBottomNav(),
-          floatingActionButton: _buildFAB(),
+          backgroundColor: colorScheme.surface,
+          body: _buildMainContent(colorScheme, isDark),
+          bottomNavigationBar: _buildBottomNav(colorScheme),
+          floatingActionButton: _buildFAB(colorScheme),
           floatingActionButtonLocation:
           FloatingActionButtonLocation.centerDocked,
         ),
@@ -215,7 +266,7 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
         if (_drawerOpen)
           GestureDetector(
             onTap: _closeDrawer,
-            child: Container(color: Colors.black.withOpacity(0.35)),
+            child: Container(color: colorScheme.scrim.withOpacity(0.35)),
           ),
 
         // ── 3. Drawer ─────────────────────────────────────────────────────
@@ -223,7 +274,7 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
           animation: _drawerSlide,
           builder: (_, __) => Transform.translate(
             offset: Offset((_drawerSlide.value - 1) * 280, 0),
-            child: _buildDrawer(),
+            child: _buildDrawer(colorScheme),
           ),
         ),
       ],
@@ -231,15 +282,15 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
   }
 
   // ── Main content ──────────────────────────────────────────────────────────
-  Widget _buildMainContent() {
+  Widget _buildMainContent(ColorScheme colorScheme, bool isDark) {
     return SafeArea(
       bottom: false,
       child: Column(
         children: [
           // AppBar
-          _buildAppBar(),
+          _buildAppBar(colorScheme),
           // Sticky tab row
-          _buildTabBar(),
+          _buildTabBar(colorScheme),
           // Scrollable list
           Expanded(
             child: ListView(
@@ -251,7 +302,7 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF1A1A2E),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -259,14 +310,35 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                   _tabSubtitle,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
-                    color: const Color(0xFF6B7280),
+                    color: colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 16),
                 ..._filtered.map(
                       (item) => _BiddingCard(
                     item: item,
-                    onTap: () {},
+                    onTap: () {
+                      if (item.status == BidStatus.live) {
+                        navigateSmoothly(
+                          context,
+                          IdeaBiddingScreen(ideaTitle: item.title),
+                        );
+                      } else if (item.status == BidStatus.upcoming) {
+                        navigateSmoothly(
+                          context,
+                          IdeaDetailScreen(
+                            ideaId: item.id,
+                            title: item.title,
+                            description: 'Fetching full details...',
+                            likes: 0,
+                            aiRating: 4.5,
+                            industry: item.category,
+                            isPatented: item.isPatented,
+                            contributorName: 'Innovator',
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ),
               ],
@@ -278,15 +350,15 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
   }
 
   // ── AppBar (identical to home_screen.dart) ────────────────────────────────
-  Widget _buildAppBar() {
+  Widget _buildAppBar(ColorScheme colorScheme) {
     return Container(
-      color: Colors.white,
+      color: colorScheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           GestureDetector(
             onTap: _toggleDrawer,
-            child: const Icon(Icons.menu, color: Color(0xFF374151), size: 26),
+            child: Icon(Icons.menu, color: colorScheme.onSurface, size: 26),
           ),
           Expanded(
             child: Center(
@@ -295,24 +367,30 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: _purple,
+                  color: colorScheme.primary,
                   letterSpacing: 0.5,
                 ),
               ),
             ),
           ),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [_gradientStart, _gradientEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+          GestureDetector(
+            onTap: () => navigateSmoothly(
+              context,
+              const ProfileScreen(),
             ),
-            child: const Icon(Icons.person, color: Colors.white, size: 20),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Icon(Icons.person, color: colorScheme.onPrimary, size: 20),
+            ),
           ),
         ],
       ),
@@ -320,13 +398,13 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
   }
 
   // ── Tab bar (Live / Soon to Start / Past Bids) ────────────────────────────
-  Widget _buildTabBar() {
+  Widget _buildTabBar(ColorScheme colorScheme) {
     return Container(
-      color: Colors.white,
+      color: colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
+          color: colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(14),
         ),
         padding: const EdgeInsets.all(4),
@@ -341,13 +419,13 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
             _TabButton(
               label: 'Soon to Start',
               selected: _activeTab == BidStatus.upcoming,
-              selectedColor: const Color(0xFF2563EB),
+              selectedColor: colorScheme.primary,
               onTap: () => setState(() => _activeTab = BidStatus.upcoming),
             ),
             _TabButton(
               label: 'Past Bids',
               selected: _activeTab == BidStatus.past,
-              selectedColor: const Color(0xFF374151),
+              selectedColor: colorScheme.onSurface,
               onTap: () => setState(() => _activeTab = BidStatus.past),
             ),
           ],
@@ -357,20 +435,21 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
   }
 
   // ── Left Drawer (identical to home_screen.dart) ───────────────────────────
-  Widget _buildDrawer() {
+  Widget _buildDrawer(ColorScheme colorScheme) {
     return Material(
       elevation: 16,
-      child: SizedBox(
+      child: Container(
         width: 280,
         height: double.infinity,
+        color: colorScheme.surface,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -386,10 +465,10 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                           height: 48,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.25),
+                          color: colorScheme.onPrimary.withOpacity(0.25),
                           ),
-                          child: const Icon(Icons.person,
-                              color: Colors.white, size: 26),
+                          child: Icon(Icons.person,
+                              color: colorScheme.onPrimary, size: 26),
                         ),
                         const SizedBox(width: 12),
                         Column(
@@ -397,12 +476,12 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                           children: [
                             Text('John Doe',
                                 style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white,
+                                    color: colorScheme.onPrimary,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700)),
                             Text('Investor',
                                 style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white70,
+                                    color: colorScheme.onPrimary.withOpacity(0.7),
                                     fontSize: 13)),
                           ],
                         ),
@@ -411,8 +490,8 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                   ),
                   GestureDetector(
                     onTap: _closeDrawer,
-                    child: const Icon(Icons.close,
-                        color: Colors.white, size: 22),
+                    child: Icon(Icons.close,
+                        color: colorScheme.onPrimary, size: 22),
                   ),
                 ],
               ),
@@ -431,17 +510,29 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                     },
                   ),
                   _DrawerItem(
-                      icon: Icons.trending_up_outlined,
-                      label: 'My Ideas',
-                      onTap: _closeDrawer),
+                    icon: Icons.trending_up_outlined,
+                    label: 'My Ideas',
+                    onTap: () {
+                      _closeDrawer();
+                      navigateSmoothly(context, const MyIdeasScreen());
+                    },
+                  ),
                   _DrawerItem(
-                      icon: Icons.notifications_outlined,
-                      label: 'Notifications',
-                      onTap: _closeDrawer),
+                    icon: Icons.notifications_outlined,
+                    label: 'Notifications',
+                    onTap: () {
+                      _closeDrawer();
+                      // Assuming NotificationsScreen is defined elsewhere or handled by another route
+                    },
+                  ),
                   _DrawerItem(
-                      icon: Icons.person_outline,
-                      label: 'Profile',
-                      onTap: _closeDrawer),
+                    icon: Icons.person_outline,
+                    label: 'Profile',
+                    onTap: () {
+                      _closeDrawer();
+                      navigateSmoothly(context, const ProfileScreen());
+                    },
+                  ),
                   _DrawerItem(
                       icon: Icons.settings_outlined,
                       label: 'Settings',
@@ -450,10 +541,11 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                       icon: Icons.help_outline,
                       label: 'Help & Support',
                       onTap: _closeDrawer),
+                  const _AppearanceToggle(),
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            Divider(height: 1, color: colorScheme.outlineVariant),
             InkWell(
               onTap: () {},
               child: Padding(
@@ -461,12 +553,12 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
                     horizontal: 20, vertical: 20),
                 child: Row(
                   children: [
-                    const Icon(Icons.logout,
-                        color: Colors.redAccent, size: 22),
+                    Icon(Icons.logout,
+                        color: colorScheme.error, size: 22),
                     const SizedBox(width: 12),
                     Text('Logout',
                         style: GoogleFonts.plusJakartaSans(
-                            color: Colors.redAccent,
+                            color: colorScheme.error,
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
                   ],
@@ -480,17 +572,17 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
   }
 
   // ── Bottom Navigation — Bidding tab highlighted ───────────────────────────
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(ColorScheme colorScheme) {
     return Theme(
       data: Theme.of(context).copyWith(
-        bottomAppBarTheme: const BottomAppBarTheme(height: _navHeight),
+        bottomAppBarTheme: const BottomAppBarThemeData(height: _navHeight),
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: colorScheme.scrim.withOpacity(0.08),
               blurRadius: 12,
               offset: const Offset(0, -3),
             ),
@@ -499,7 +591,7 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
         child: BottomAppBar(
           shape: const CircularNotchedRectangle(),
           notchMargin: 6,
-          color: Colors.white,
+          color: colorScheme.surface,
           elevation: 0,
           padding: EdgeInsets.zero,
           child: SizedBox(
@@ -536,7 +628,7 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
   }
 
   // ── FAB ───────────────────────────────────────────────────────────────────
-  Widget _buildFAB() {
+  Widget _buildFAB(ColorScheme colorScheme) {
     return Transform.translate(
       offset: const Offset(0, 12),
       child: GestureDetector(
@@ -547,29 +639,29 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
             Container(
               width: 52,
               height: 52,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x557C3AED),
+                    color: colorScheme.primary.withOpacity(0.35),
                     blurRadius: 10,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 30),
+              child: Icon(Icons.add, color: colorScheme.onPrimary, size: 30),
             ),
             const SizedBox(height: 7),
-            const Text(
+            Text(
               'Submit',
               style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF9CA3AF),
+                color: colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w400,
               ),
             ),
@@ -591,11 +683,11 @@ class _BiddingCard extends StatelessWidget {
   List<Color> get _statusColors {
     switch (item.status) {
       case BidStatus.live:
-        return [const Color(0xFF4ADE80), const Color(0xFF10B981)];
+        return [const Color(0xFF16A34A), const Color(0xFF059669)];
       case BidStatus.upcoming:
-        return [const Color(0xFF60A5FA), const Color(0xFF2563EB)];
+        return [const Color(0xFF16A34A), const Color(0xFF059669)];
       case BidStatus.past:
-        return [const Color(0xFF9CA3AF), const Color(0xFF4B5563)];
+        return [const Color(0xFF64748B), const Color(0xFF475569)];
     }
   }
 
@@ -610,35 +702,35 @@ class _BiddingCard extends StatelessWidget {
     }
   }
 
-  Widget _statusIcon() {
+  Widget _statusIcon(ColorScheme colorScheme) {
     switch (item.status) {
       case BidStatus.live:
         return _PulseDot();
       case BidStatus.upcoming:
-        return const Icon(Icons.calendar_today_outlined,
-            color: Colors.white, size: 14);
+        return Icon(Icons.calendar_today_outlined,
+            color: colorScheme.onPrimary, size: 14);
       case BidStatus.past:
-        return const Icon(Icons.check_circle_outline,
-            color: Colors.white, size: 14);
+        return Icon(Icons.check_circle_outline,
+            color: colorScheme.onPrimary, size: 14);
     }
   }
 
-  Widget _timeIcon() {
+  Widget _timeIcon(ColorScheme colorScheme) {
     switch (item.status) {
       case BidStatus.live:
         return const Icon(Icons.access_time,
-            size: 16, color: Color(0xFFF97316));
+            size: 16, color: Color(0xFFFBBF24));
       case BidStatus.upcoming:
-        return const Icon(Icons.calendar_today_outlined,
-            size: 16, color: Color(0xFF2563EB));
+        return Icon(Icons.calendar_today_outlined,
+            size: 16, color: colorScheme.primary);
       case BidStatus.past:
-        return const Icon(Icons.check_circle_outline,
-            size: 16, color: Color(0xFF9CA3AF));
+        return Icon(Icons.check_circle_outline,
+            size: 16, color: colorScheme.onSurfaceVariant);
     }
   }
 
   // Action button
-  Widget _actionButton(VoidCallback onTap) {
+  Widget _actionButton(VoidCallback onTap, ColorScheme colorScheme) {
     switch (item.status) {
       case BidStatus.live:
         return SizedBox(
@@ -656,7 +748,7 @@ class _BiddingCard extends StatelessWidget {
             child: TextButton(
               onPressed: onTap,
               style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
+                foregroundColor: colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
@@ -675,7 +767,7 @@ class _BiddingCard extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                colors: [Color(0xFF16A34A), Color(0xFF059669)],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
@@ -684,7 +776,7 @@ class _BiddingCard extends StatelessWidget {
             child: TextButton(
               onPressed: onTap,
               style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
+                foregroundColor: colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
@@ -702,7 +794,7 @@ class _BiddingCard extends StatelessWidget {
           height: 42,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
+              color: colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -711,7 +803,7 @@ class _BiddingCard extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: const Color(0xFF6B7280),
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -725,20 +817,24 @@ class _BiddingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colorScheme.surfaceContainer : colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.10),
+            color: colorScheme.scrim.withOpacity(0.10),
             blurRadius: 14,
             spreadRadius: 0,
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: colorScheme.scrim.withOpacity(0.04),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -762,7 +858,7 @@ class _BiddingCard extends StatelessWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: const Color(0xFF111827),
+                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -770,7 +866,7 @@ class _BiddingCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEDE9FE),
+                          color: _getCategoryTagBg(item.category, colorScheme, isDark),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -778,7 +874,7 @@ class _BiddingCard extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: _purple,
+                            color: _getCategoryTagText(item.category, colorScheme, isDark),
                           ),
                         ),
                       ),
@@ -801,12 +897,12 @@ class _BiddingCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _statusIcon(),
+                      _statusIcon(colorScheme),
                       const SizedBox(width: 5),
                       Text(
                         _statusLabel,
                         style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white,
+                          color: colorScheme.onPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -827,7 +923,7 @@ class _BiddingCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Column(
@@ -836,14 +932,14 @@ class _BiddingCard extends StatelessWidget {
                         Text('Base Price',
                             style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11,
-                                color: const Color(0xFF6B7280))),
+                                color: colorScheme.onSurfaceVariant)),
                         const SizedBox(height: 2),
                         Text(
                           _formatPrice(item.basePrice),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF111827),
+                            color: colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -857,12 +953,14 @@ class _BiddingCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(9),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFF0FDF4), Color(0xFFECFDF5)],
+                        gradient: LinearGradient(
+                          colors: isDark 
+                              ? [colorScheme.secondaryContainer.withOpacity(0.2), colorScheme.secondaryContainer.withOpacity(0.1)]
+                              : [const Color(0xFFF0FDF4), const Color(0xFFECFDF5)],
                         ),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: const Color(0xFFBBF7D0), width: 1),
+                            color: isDark ? colorScheme.secondaryContainer : const Color(0xFF16A34A).withOpacity(0.2), width: 1),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -893,26 +991,26 @@ class _BiddingCard extends StatelessWidget {
             // ── Time + Participants row ──────────────────────────────────────
             Row(
               children: [
-                _timeIcon(),
+                _timeIcon(colorScheme),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     item.timeInfo,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
-                      color: const Color(0xFF4B5563),
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
                 if (item.status != BidStatus.upcoming) ...[
-                  const Icon(Icons.trending_up,
-                      size: 16, color: _purpleLight),
+                  Icon(Icons.trending_up,
+                      size: 16, color: colorScheme.primary),
                   const SizedBox(width: 4),
                   Text(
                     '${item.participants} participants',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
-                      color: const Color(0xFF4B5563),
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -922,7 +1020,7 @@ class _BiddingCard extends StatelessWidget {
             const SizedBox(height: 10),
 
             // ── Action button ───────────────────────────────────────────────
-            _actionButton(onTap),
+            _actionButton(onTap, colorScheme),
           ],
         ),
       ),
@@ -961,14 +1059,15 @@ class _PulseDotState extends State<_PulseDot>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return FadeTransition(
       opacity: _anim,
       child: Container(
         width: 8,
         height: 8,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white,
+          color: colorScheme.onPrimary,
         ),
       ),
     );
@@ -991,6 +1090,9 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -999,12 +1101,12 @@ class _TabButton extends StatelessWidget {
           curve: Curves.easeInOut,
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? Colors.white : Colors.transparent,
+            color: selected ? colorScheme.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             boxShadow: selected
                 ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: colorScheme.scrim.withOpacity(0.08),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               )
@@ -1020,7 +1122,7 @@ class _TabButton extends StatelessWidget {
                 selected ? FontWeight.w600 : FontWeight.w500,
                 color: selected
                     ? selectedColor
-                    : const Color(0xFF6B7280),
+                    : colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -1041,6 +1143,7 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -1048,12 +1151,12 @@ class _DrawerItem extends StatelessWidget {
         const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: _purple, size: 22),
+            Icon(icon, color: colorScheme.primary, size: 22),
             const SizedBox(width: 16),
             Text(label,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
-                    color: const Color(0xFF374151),
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w500)),
           ],
         ),
@@ -1078,6 +1181,7 @@ class _BottomNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -1088,18 +1192,108 @@ class _BottomNavItem extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 28,
-                color: selected ? _purple : const Color(0xFF9CA3AF)),
+                color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
             const SizedBox(height: 1),
             Text(
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: selected ? _purple : const Color(0xFF9CA3AF),
+                color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
                 fontWeight:
                 selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Appearance Toggle ────────────────────────────────────────────────────────
+class _AppearanceToggle extends StatelessWidget {
+  const _AppearanceToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeManager.themeMode,
+      builder: (context, mode, _) {
+        final isDark = mode == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Appearance',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      color: colorScheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              _ModernSwitch(
+                value: isDark,
+                onChanged: (val) => ThemeManager.toggleTheme(val),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ModernSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ModernSwitch({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: 46,
+        height: 24,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: value ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 250),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.scrim.withOpacity(0.12),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

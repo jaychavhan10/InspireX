@@ -7,10 +7,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'home_screen.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientMid   = Color(0xFF8B5CF6);
-const _gradientEnd   = Color(0xFF3B82F6);
-
 enum _UserRole { contributor, investor, both }
 
 // ─── SignupScreen ─────────────────────────────────────────────────────────────
@@ -76,14 +72,30 @@ class _SignupScreenState extends State<SignupScreen> {
     _fullNameController.dispose();
     _emailController.dispose();
     _mobileController.dispose();
-    for (final c in _emailOtpControllers)   c.dispose();
-    for (final f in _emailOtpFocus)         f.dispose();
-    for (final c in _mobileOtpControllers)  c.dispose();
-    for (final f in _mobileOtpFocus)        f.dispose();
-    for (final c in _pinControllers)        c.dispose();
-    for (final f in _pinFocus)              f.dispose();
-    for (final c in _confirmPinControllers) c.dispose();
-    for (final f in _confirmPinFocus)       f.dispose();
+    for (final c in _emailOtpControllers) {
+      c.dispose();
+    }
+    for (final f in _emailOtpFocus) {
+      f.dispose();
+    }
+    for (final c in _mobileOtpControllers) {
+      c.dispose();
+    }
+    for (final f in _mobileOtpFocus) {
+      f.dispose();
+    }
+    for (final c in _pinControllers) {
+      c.dispose();
+    }
+    for (final f in _pinFocus) {
+      f.dispose();
+    }
+    for (final c in _confirmPinControllers) {
+      c.dispose();
+    }
+    for (final f in _confirmPinFocus) {
+      f.dispose();
+    }
     _emailDebounce?.cancel();
     super.dispose();
   }
@@ -94,12 +106,13 @@ class _SignupScreenState extends State<SignupScreen> {
   String get _mobileOtpFromBoxes =>
       _mobileOtpControllers.map((c) => c.text).join();
 
-  void _showSnack(String msg, {Color color = Colors.redAccent}) {
+  void _showSnack(String msg, {Color? color}) {
     if (!mounted) return;
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-      backgroundColor: color,
+          style: GoogleFonts.plusJakartaSans(fontSize: 13, color: colorScheme.onInverseSurface)),
+      backgroundColor: color ?? colorScheme.error,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10)),
@@ -161,12 +174,13 @@ class _SignupScreenState extends State<SignupScreen> {
       });
 
       if (mounted) {
+        final colorScheme = Theme.of(context).colorScheme;
         setState(() {
           _emailOtpSent    = true;
           _emailOtpLoading = false;
         });
         _showSnack('OTP sent to $email  [Demo OTP: $otp]',
-            color: _gradientStart);
+            color: colorScheme.primary);
       }
     } catch (e) {
       setState(() => _emailOtpLoading = false);
@@ -244,12 +258,13 @@ class _SignupScreenState extends State<SignupScreen> {
         _showSnack(e.message ?? 'Phone verification failed.');
       },
       codeSent: (String verificationId, int? resendToken) {
+        final colorScheme = Theme.of(context).colorScheme;
         setState(() {
           _verificationId   = verificationId;
           _mobileOtpSent    = true;
           _mobileOtpLoading = false;
         });
-        _showSnack('OTP sent to $phone', color: _gradientStart);
+        _showSnack('OTP sent to $phone', color: colorScheme.primary);
       },
       codeAutoRetrievalTimeout: (_) {},
     );
@@ -287,6 +302,8 @@ class _SignupScreenState extends State<SignupScreen> {
     final phone = _mobileController.text.trim();
     _pin        = _pinControllers.map((c) => c.text).join();
     _confirmPin = _confirmPinControllers.map((c) => c.text).join();
+
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (name.isEmpty) {
       _showSnack('Please enter your full name.');
@@ -337,77 +354,81 @@ class _SignupScreenState extends State<SignupScreen> {
       await showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (_) => Dialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 70, height: 70,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [_gradientStart, _gradientEnd],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: const Icon(Icons.check,
-                      color: Colors.white, size: 36),
-                ),
-                const SizedBox(height: 18),
-                Text('Account Created!',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF111827))),
-                const SizedBox(height: 8),
-                Text(
-                  'Welcome to InspireX, $name! 🎉\nYour account has been created successfully.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: const Color(0xFF6B7280),
-                      height: 1.5),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: DecoratedBox(
+        builder: (_) => Theme(
+          data: Theme.of(context),
+          child: Dialog(
+            backgroundColor: colorScheme.surface,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 70, height: 70,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_gradientStart, _gradientEnd],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [colorScheme.primary, colorScheme.tertiary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                              builder: (_) => const HomeScreen()),
-                              (route) => false,
-                        );
-                      },
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                    child: Icon(Icons.check,
+                        color: colorScheme.onPrimary, size: 36),
+                  ),
+                  const SizedBox(height: 18),
+                  Text('Account Created!',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Welcome to InspireX, $name! 🎉\nYour account has been created successfully.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.5),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [colorScheme.primary, colorScheme.secondary],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text('Let\'s Go!',
-                          style: GoogleFonts.plusJakartaSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const HomeScreen()),
+                                (route) => false,
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: colorScheme.onPrimary,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: Text('Let\'s Go!',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700)),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -430,12 +451,17 @@ class _SignupScreenState extends State<SignupScreen> {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       resizeToAvoidBottomInset: true,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [_gradientStart, _gradientMid, _gradientEnd],
+            colors: [
+              colorScheme.primary,
+              colorScheme.secondary,
+              colorScheme.tertiary,
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -445,16 +471,16 @@ class _SignupScreenState extends State<SignupScreen> {
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
             child: Column(
               children: [
-                _buildBranding(),
+                _buildBranding(colorScheme),
                 const SizedBox(height: 24),
-                _buildFormCard(),
+                _buildFormCard(colorScheme),
                 const SizedBox(height: 16),
                 Text(
                   'By signing up, you agree to our Terms & Privacy Policy',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
-                    color: Colors.white.withOpacity(0.65),
+                    color: colorScheme.onPrimary.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -466,7 +492,7 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   // ── Branding (back arrow lives here) ─────────────────────────────────────
-  Widget _buildBranding() {
+  Widget _buildBranding(ColorScheme colorScheme) {
     return Column(
       children: [
         // Back arrow — no separate app bar needed
@@ -478,10 +504,10 @@ class _SignupScreenState extends State<SignupScreen> {
               width: 38, height: 38,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.2),
+                color: colorScheme.onPrimary.withOpacity(0.2),
               ),
-              child: const Icon(Icons.arrow_back,
-                  color: Colors.white, size: 20),
+              child: Icon(Icons.arrow_back,
+                  color: colorScheme.onPrimary, size: 20),
             ),
           ),
         ),
@@ -493,23 +519,23 @@ class _SignupScreenState extends State<SignupScreen> {
               width: 80, height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.15),
+                color: colorScheme.onPrimary.withOpacity(0.15),
               ),
             ),
             Container(
               width: 64, height: 64,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white,
+                color: colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                      color: Color(0x557C3AED),
+                      color: colorScheme.primary.withOpacity(0.3),
                       blurRadius: 24,
                       spreadRadius: 4),
                 ],
               ),
-              child: const Icon(Icons.lightbulb_outline_rounded,
-                  size: 32, color: _gradientStart),
+              child: Icon(Icons.lightbulb_outline_rounded,
+                  size: 32, color: colorScheme.primary),
             ),
           ],
         ),
@@ -518,18 +544,18 @@ class _SignupScreenState extends State<SignupScreen> {
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 26,
                 fontWeight: FontWeight.w700,
-                color: Colors.white)),
+                color: colorScheme.onPrimary)),
         const SizedBox(height: 4),
         Text('Join the marketplace for ideas',
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
-                color: Colors.white.withOpacity(0.85))),
+                color: colorScheme.onPrimary.withOpacity(0.85))),
       ],
     );
   }
 
   // ── Form card ─────────────────────────────────────────────────────────────
-  Widget _buildFormCard() {
+  Widget _buildFormCard(ColorScheme colorScheme) {
     _pin        = _pinControllers.map((c) => c.text).join();
     _confirmPin = _confirmPinControllers.map((c) => c.text).join();
     final pinsMatch =
@@ -540,11 +566,11 @@ class _SignupScreenState extends State<SignupScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.97),
+        color: colorScheme.surface.withOpacity(0.97),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.18),
+              color: colorScheme.scrim.withOpacity(0.12),
               blurRadius: 40,
               offset: const Offset(0, 12)),
         ],
@@ -555,17 +581,18 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
 
           // ── Full Name ──────────────────────────────────────────────
-          _label('Full Name'),
+          _label('Full Name', colorScheme),
           const SizedBox(height: 6),
           _textField(
             controller: _fullNameController,
             hint: 'Enter your full name',
             textCapitalization: TextCapitalization.words,
+            colorScheme: colorScheme,
           ),
           const SizedBox(height: 16),
 
           // ── Email ──────────────────────────────────────────────────
-          _label('Email Address'),
+          _label('Email Address', colorScheme),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -576,6 +603,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   keyboardType: TextInputType.emailAddress,
                   enabled: !_emailVerified,
                   onChanged: _onEmailChanged,
+                  colorScheme: colorScheme,
                 ),
               ),
               const SizedBox(width: 8),
@@ -585,6 +613,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 label: _emailOtpSent ? 'Resend' : 'Send OTP',
                 loading: _emailOtpLoading,
                 onTap: _sendEmailOtp,
+                colorScheme: colorScheme,
               ),
             ],
           ),
@@ -593,7 +622,7 @@ class _SignupScreenState extends State<SignupScreen> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(_emailError,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: Colors.redAccent)),
+                      fontSize: 11, color: colorScheme.error)),
             ),
 
           if (_emailOtpSent && !_emailVerified) ...[
@@ -604,12 +633,13 @@ class _SignupScreenState extends State<SignupScreen> {
               focusNodes: _emailOtpFocus,
               loading: _emailVerifyLoading,
               onVerify: _verifyEmailOtp,
+              colorScheme: colorScheme,
             ),
           ],
           const SizedBox(height: 16),
 
           // ── Mobile ─────────────────────────────────────────────────
-          _label('Mobile Number'),
+          _label('Mobile Number', colorScheme),
           const SizedBox(height: 6),
           Row(
             children: [
@@ -620,6 +650,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   keyboardType: TextInputType.phone,
                   enabled: !_mobileVerified,
                   onChanged: (_) => setState(() => _mobileError = ''),
+                  colorScheme: colorScheme,
                 ),
               ),
               const SizedBox(width: 8),
@@ -629,6 +660,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 label: _mobileOtpSent ? 'Resend' : 'Send OTP',
                 loading: _mobileOtpLoading,
                 onTap: _sendMobileOtp,
+                colorScheme: colorScheme,
               ),
             ],
           ),
@@ -637,7 +669,7 @@ class _SignupScreenState extends State<SignupScreen> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(_mobileError,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11, color: Colors.redAccent)),
+                      fontSize: 11, color: colorScheme.error)),
             ),
 
           if (_mobileOtpSent && !_mobileVerified) ...[
@@ -648,50 +680,54 @@ class _SignupScreenState extends State<SignupScreen> {
               focusNodes: _mobileOtpFocus,
               loading: _mobileVerifyLoading,
               onVerify: _verifyMobileOtp,
+              colorScheme: colorScheme,
             ),
           ],
           const SizedBox(height: 16),
 
           // ── I want to join as ──────────────────────────────────────
-          _label('I want to join as'),
+          _label('I want to join as', colorScheme),
           const SizedBox(height: 10),
           Row(
             children: [
               _roleButton(
                   label: 'Contributor',
                   icon: Icons.description_outlined,
-                  role: _UserRole.contributor),
+                  role: _UserRole.contributor,
+                  colorScheme: colorScheme),
               const SizedBox(width: 8),
               _roleButton(
                   label: 'Investor',
                   icon: Icons.work_outline,
-                  role: _UserRole.investor),
+                  role: _UserRole.investor,
+                  colorScheme: colorScheme),
               const SizedBox(width: 8),
               _roleButton(
                   label: 'Both',
                   icon: Icons.person_outline,
-                  role: _UserRole.both),
+                  role: _UserRole.both,
+                  colorScheme: colorScheme),
             ],
           ),
           const SizedBox(height: 16),
 
           // ── Create PIN ─────────────────────────────────────────────
-          _label('Create 6-Digit PIN'),
+          _label('Create 6-Digit PIN', colorScheme),
           const SizedBox(height: 12),
-          _pinRow(_pinControllers, _pinFocus),
+          _pinRow(_pinControllers, _pinFocus, colorScheme),
           const SizedBox(height: 16),
 
           // ── Confirm PIN ────────────────────────────────────────────
-          _label('Confirm PIN'),
+          _label('Confirm PIN', colorScheme),
           const SizedBox(height: 12),
-          _pinRow(_confirmPinControllers, _confirmPinFocus),
+          _pinRow(_confirmPinControllers, _confirmPinFocus, colorScheme),
           if (pinsMismatch)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text('PINs do not match',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: Colors.redAccent)),
+                      fontSize: 12, color: colorScheme.error)),
             ),
           if (pinsMatch)
             Padding(
@@ -699,7 +735,7 @@ class _SignupScreenState extends State<SignupScreen> {
               child: Text('✓ PINs match',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12, color: Colors.green)),
+                      fontSize: 12, color: const Color(0xFF16A34A))),
             ),
           const SizedBox(height: 24),
 
@@ -709,15 +745,15 @@ class _SignupScreenState extends State<SignupScreen> {
             height: 50,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                gradient: LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.tertiary],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: _gradientStart.withOpacity(0.4),
+                    color: colorScheme.primary.withOpacity(0.4),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -726,15 +762,15 @@ class _SignupScreenState extends State<SignupScreen> {
               child: TextButton(
                 onPressed: _submitting ? null : _createAccount,
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
+                  foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
                 child: _submitting
-                    ? const SizedBox(
+                    ? SizedBox(
                     width: 20, height: 20,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
+                        color: colorScheme.onPrimary, strokeWidth: 2))
                     : Text('Create Account',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 15,
@@ -750,7 +786,7 @@ class _SignupScreenState extends State<SignupScreen> {
               text: TextSpan(
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    color: const Color(0xFF6B7280)),
+                    color: colorScheme.onSurfaceVariant),
                 children: [
                   const TextSpan(text: 'Already have an account? '),
                   WidgetSpan(
@@ -760,7 +796,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: _gradientStart)),
+                              color: colorScheme.primary)),
                     ),
                   ),
                 ],
@@ -774,11 +810,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
   // ── Reusable widgets ──────────────────────────────────────────────────────
 
-  Widget _label(String text) => Text(text,
+  Widget _label(String text, ColorScheme colorScheme) => Text(text,
       style: GoogleFonts.plusJakartaSans(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: const Color(0xFF374151)));
+          color: colorScheme.onSurface));
 
   Widget _textField({
     required TextEditingController controller,
@@ -787,6 +823,7 @@ class _SignupScreenState extends State<SignupScreen> {
     TextCapitalization textCapitalization = TextCapitalization.none,
     bool enabled = true,
     void Function(String)? onChanged,
+    required ColorScheme colorScheme,
   }) {
     return TextField(
       controller: controller,
@@ -795,33 +832,31 @@ class _SignupScreenState extends State<SignupScreen> {
       enabled: enabled,
       onChanged: onChanged,
       style: GoogleFonts.plusJakartaSans(
-          fontSize: 14, color: const Color(0xFF111827)),
+          fontSize: 14, color: colorScheme.onSurface),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: GoogleFonts.plusJakartaSans(
-            fontSize: 14, color: const Color(0xFF9CA3AF)),
+            fontSize: 14, color: colorScheme.onSurfaceVariant.withOpacity(0.6)),
         filled: true,
-        fillColor: enabled
-            ? const Color(0xFFF8FAFC)
-            : const Color(0xFFF1F5F9),
+        fillColor: colorScheme.surfaceContainerHighest,
         contentPadding:
         const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-          const BorderSide(color: _gradientStart, width: 1.5),
+          BorderSide(color: colorScheme.primary, width: 1.5),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
         ),
       ),
     );
@@ -831,6 +866,7 @@ class _SignupScreenState extends State<SignupScreen> {
     required String label,
     required bool loading,
     required VoidCallback onTap,
+    required ColorScheme colorScheme,
   }) {
     return GestureDetector(
       onTap: loading ? null : onTap,
@@ -838,8 +874,8 @@ class _SignupScreenState extends State<SignupScreen> {
         height: 46,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [_gradientStart, _gradientEnd],
+          gradient: LinearGradient(
+            colors: [colorScheme.primary, colorScheme.secondary],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
@@ -847,42 +883,46 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         child: Center(
           child: loading
-              ? const SizedBox(
+              ? SizedBox(
               width: 16, height: 16,
               child: CircularProgressIndicator(
-                  color: Colors.white, strokeWidth: 2))
+                  color: colorScheme.onPrimary, strokeWidth: 2))
               : Text(label,
               style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white)),
+                  color: colorScheme.onPrimary)),
         ),
       ),
     );
   }
 
-  Widget _verifiedBadge() => Container(
-    height: 46,
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFDCFCE7),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFF86EFAC)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.check_circle,
-            color: Color(0xFF16A34A), size: 16),
-        const SizedBox(width: 4),
-        Text('Verified',
-            style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF16A34A))),
-      ],
-    ),
-  );
+  Widget _verifiedBadge() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16A34A).withOpacity(isDark ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF16A34A).withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle,
+              color: Color(0xFF16A34A), size: 16),
+          const SizedBox(width: 4),
+          Text('Verified',
+              style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF16A34A))),
+        ],
+      ),
+    );
+  }
 
   // ── OTP card (email / mobile) ─────────────────────────────────────────────
   Widget _otpCard({
@@ -891,6 +931,7 @@ class _SignupScreenState extends State<SignupScreen> {
     required List<FocusNode> focusNodes,
     required bool loading,
     required VoidCallback onVerify,
+    required ColorScheme colorScheme,
   }) {
     // Dynamic box width to prevent overflow
     // Available = screenWidth - scrollPadding(48) - cardPadding(40)
@@ -902,9 +943,9 @@ class _SignupScreenState extends State<SignupScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F3FF),
+        color: colorScheme.primaryContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFDDD6FE)),
+        border: Border.all(color: colorScheme.primaryContainer),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,7 +954,7 @@ class _SignupScreenState extends State<SignupScreen> {
               style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF374151))),
+                  color: colorScheme.onSurface)),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -922,7 +963,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   (i) => Row(
                 children: [
                   _buildOtpBox(controllers[i], focusNodes[i], i,
-                      controllers, focusNodes, boxWidth),
+                      controllers, focusNodes, boxWidth, colorScheme),
                   if (i != 5) const SizedBox(width: 6),
                 ],
               ),
@@ -934,8 +975,8 @@ class _SignupScreenState extends State<SignupScreen> {
             height: 42,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                gradient: LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
@@ -944,15 +985,15 @@ class _SignupScreenState extends State<SignupScreen> {
               child: TextButton(
                 onPressed: loading ? null : onVerify,
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
+                  foregroundColor: colorScheme.onPrimary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
                 child: loading
-                    ? const SizedBox(
+                    ? SizedBox(
                     width: 16, height: 16,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
+                        color: colorScheme.onPrimary, strokeWidth: 2))
                     : Text('Verify',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
@@ -973,6 +1014,7 @@ class _SignupScreenState extends State<SignupScreen> {
       List<TextEditingController> allControllers,
       List<FocusNode> allFocus,
       double boxWidth,
+      ColorScheme colorScheme,
       ) {
     return SizedBox(
       width: boxWidth,
@@ -985,24 +1027,24 @@ class _SignupScreenState extends State<SignupScreen> {
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         style: GoogleFonts.plusJakartaSans(
-            fontSize: 16, fontWeight: FontWeight.w700),
+            fontSize: 16, fontWeight: FontWeight.w700, color: colorScheme.onSurface),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
-          fillColor: Colors.white,
+          fillColor: colorScheme.surface,
           contentPadding: EdgeInsets.zero,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFDDD6FE)),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFDDD6FE)),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
-            const BorderSide(color: _gradientStart, width: 1.8),
+            BorderSide(color: colorScheme.primary, width: 1.8),
           ),
         ),
         onChanged: (v) {
@@ -1020,7 +1062,8 @@ class _SignupScreenState extends State<SignupScreen> {
   // ── PIN row ───────────────────────────────────────────────────────────────
   Widget _pinRow(
       List<TextEditingController> controllers,
-      List<FocusNode> focusNodes) {
+      List<FocusNode> focusNodes,
+      ColorScheme colorScheme) {
     // Dynamic box width to prevent overflow
     // Available = screenWidth - scrollPadding(48) - cardPadding(40) - 5 gaps(20)
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1049,26 +1092,26 @@ class _SignupScreenState extends State<SignupScreen> {
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827)),
+                    color: colorScheme.onSurface),
                 decoration: InputDecoration(
                   counterText: '',
                   filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
+                  fillColor: colorScheme.surfaceContainerHighest,
                   contentPadding: EdgeInsets.zero,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide:
-                    const BorderSide(color: Color(0xFFE5E7EB)),
+                    BorderSide(color: colorScheme.outlineVariant),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide:
-                    const BorderSide(color: Color(0xFFE5E7EB)),
+                    BorderSide(color: colorScheme.outlineVariant),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(
-                        color: _gradientStart, width: 1.8),
+                    borderSide: BorderSide(
+                        color: colorScheme.primary, width: 1.8),
                   ),
                 ),
                 onChanged: (v) {
@@ -1100,6 +1143,7 @@ class _SignupScreenState extends State<SignupScreen> {
     required String label,
     required IconData icon,
     required _UserRole role,
+    required ColorScheme colorScheme,
   }) {
     final selected = _userRole == role;
     return Expanded(
@@ -1110,17 +1154,17 @@ class _SignupScreenState extends State<SignupScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             gradient: selected
-                ? const LinearGradient(
-                colors: [_gradientStart, _gradientEnd],
+                ? LinearGradient(
+                colors: [colorScheme.primary, colorScheme.secondary],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight)
                 : null,
-            color: selected ? null : const Color(0xFFF1F5F9),
+            color: selected ? null : colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(12),
             boxShadow: selected
                 ? [
               BoxShadow(
-                  color: _gradientStart.withOpacity(0.3),
+                  color: colorScheme.primary.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 3))
             ]
@@ -1132,8 +1176,8 @@ class _SignupScreenState extends State<SignupScreen> {
               Icon(icon,
                   size: 22,
                   color: selected
-                      ? Colors.white
-                      : const Color(0xFF64748B)),
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant),
               const SizedBox(height: 5),
               Text(label,
                   style: GoogleFonts.plusJakartaSans(
@@ -1142,8 +1186,8 @@ class _SignupScreenState extends State<SignupScreen> {
                           ? FontWeight.w700
                           : FontWeight.w500,
                       color: selected
-                          ? Colors.white
-                          : const Color(0xFF374151))),
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface)),
             ],
           ),
         ),

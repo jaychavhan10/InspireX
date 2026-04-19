@@ -3,12 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'idea_bidding_screen.dart';
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-const _purple        = Color(0xFF7C3AED);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd   = Color(0xFF3B82F6);
-const _bgColor       = Color(0xFFF8FAFC);
+import 'notifications_screen.dart';
+import '../utils/transitions.dart';
 
 // ─── Feed publishing helper ───────────────────────────────────────────────────
 //
@@ -104,23 +100,27 @@ class _MyIdeasScreenState extends State<MyIdeasScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: isDark ? colorScheme.surface : colorScheme.surfaceContainerLow,
       body: Column(
         children: [
-          _buildAppBar(),
-          _buildTabBar(),
+          _buildAppBar(colorScheme),
+          _buildTabBar(colorScheme),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _ideasStream,
               builder: (_, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: _purple),
+                  return Center(
+                    child: CircularProgressIndicator(color: colorScheme.primary),
                   );
                 }
                 if (snap.hasError) {
-                  return _ErrorView(message: '${snap.error}');
+                  return _ErrorView(message: '${snap.error}', colorScheme: colorScheme);
                 }
 
                 final allDocs = snap.data?.docs ?? [];
@@ -130,7 +130,7 @@ class _MyIdeasScreenState extends State<MyIdeasScreen>
                   children: List.generate(_tabs.length, (i) {
                     final filtered = _filter(List.from(allDocs), i);
                     if (filtered.isEmpty) {
-                      return _EmptyState(tabLabel: _tabs[i]);
+                      return _EmptyState(tabLabel: _tabs[i], colorScheme: colorScheme);
                     }
                     return ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -151,17 +151,17 @@ class _MyIdeasScreenState extends State<MyIdeasScreen>
   }
 
   // ── App Bar ───────────────────────────────────────────────────────────────
-  Widget _buildAppBar() {
+  Widget _buildAppBar(ColorScheme colorScheme) {
     return SafeArea(
       bottom: false,
       child: Container(
-        color: Colors.white,
+        color: colorScheme.surface,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back,
-                  color: Color(0xFF374151), size: 22),
+              icon: Icon(Icons.arrow_back,
+                  color: colorScheme.onSurface, size: 22),
               onPressed: () => Navigator.pop(context),
             ),
             Expanded(
@@ -173,20 +173,20 @@ class _MyIdeasScreenState extends State<MyIdeasScreen>
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF111827),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     'Track and manage your submitted ideas',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
-                      color: const Color(0xFF9CA3AF),
+                      color: colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
             ),
-            _NotificationBell(uid: _uid),
+            _NotificationBell(uid: _uid, colorScheme: colorScheme),
           ],
         ),
       ),
@@ -194,9 +194,9 @@ class _MyIdeasScreenState extends State<MyIdeasScreen>
   }
 
   // ── Tab Bar ───────────────────────────────────────────────────────────────
-  Widget _buildTabBar() {
+  Widget _buildTabBar(ColorScheme colorScheme) {
     return Container(
-      color: Colors.white,
+      color: colorScheme.surface,
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
@@ -209,9 +209,9 @@ class _MyIdeasScreenState extends State<MyIdeasScreen>
           fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
-        labelColor: _purple,
-        unselectedLabelColor: const Color(0xFF9CA3AF),
-        indicatorColor: _purple,
+        labelColor: colorScheme.primary,
+        unselectedLabelColor: colorScheme.onSurfaceVariant,
+        indicatorColor: colorScheme.primary,
         indicatorWeight: 2.5,
         tabs: _tabs.map((t) => Tab(text: t)).toList(),
       ),
@@ -235,12 +235,12 @@ class _IdeaCard extends StatelessWidget {
     }
   }
 
-  Color _statusColor(String? s) {
+  Color _statusColor(String? s, ColorScheme colorScheme) {
     switch (s) {
       case 'approved': return const Color(0xFF16A34A);
-      case 'rejected': return Colors.redAccent;
-      case 'on_hold':  return const Color(0xFFF59E0B);
-      default:         return const Color(0xFF6B7280);
+      case 'rejected': return colorScheme.error;
+      case 'on_hold':  return colorScheme.tertiary;
+      default:         return colorScheme.onSurfaceVariant;
     }
   }
 
@@ -253,12 +253,12 @@ class _IdeaCard extends StatelessWidget {
     }
   }
 
-  Color _statusBg(String? s) {
+  Color _statusBg(String? s, ColorScheme colorScheme, bool isDark) {
     switch (s) {
-      case 'approved': return const Color(0xFFDCFCE7);
-      case 'rejected': return const Color(0xFFFFE4E6);
-      case 'on_hold':  return const Color(0xFFFFF3CD);
-      default:         return const Color(0xFFF1F5F9);
+      case 'approved': return const Color(0xFF16A34A).withOpacity(isDark ? 0.15 : 0.1);
+      case 'rejected': return colorScheme.error.withOpacity(isDark ? 0.15 : 0.1);
+      case 'on_hold':  return colorScheme.tertiary.withOpacity(isDark ? 0.15 : 0.1);
+      default:         return colorScheme.surfaceContainerHighest;
     }
   }
 
@@ -275,6 +275,10 @@ class _IdeaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme       = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark      = theme.brightness == Brightness.dark;
+
     final d           = doc.data();
     final title       = d['title']       as String? ?? 'Untitled';
     final category    = d['category']    as String? ?? '';
@@ -288,19 +292,17 @@ class _IdeaCard extends StatelessWidget {
     final biddingTime = d['biddingTime'] as String?;
 
     // ── Auto-publish when card is built and status is approved ────────────
-    // This ensures that if admin changes status in Firestore console directly
-    // (or via admin panel), the feed stays in sync.
     if (status == 'approved') {
       _syncFeed(doc.id, d);
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: colorScheme.scrim.withOpacity(0.08),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -315,21 +317,21 @@ class _IdeaCard extends StatelessWidget {
             padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: _statusBg(status),
+              color: _statusBg(status, colorScheme, isDark),
               borderRadius:
               const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Row(
               children: [
                 Icon(_statusIcon(status),
-                    size: 16, color: _statusColor(status)),
+                    size: 16, color: _statusColor(status, colorScheme)),
                 const SizedBox(width: 6),
                 Text(
                   _statusLabel(status),
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: _statusColor(status),
+                    color: _statusColor(status, colorScheme),
                   ),
                 ),
                 const Spacer(),
@@ -368,7 +370,7 @@ class _IdeaCard extends StatelessWidget {
                     ),
                   ),
                 if (status == 'pending_review' || status == null)
-                  _AnimatedDot(),
+                  _AnimatedDot(colorScheme: colorScheme),
               ],
             ),
           ),
@@ -384,7 +386,7 @@ class _IdeaCard extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827),
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -397,8 +399,8 @@ class _IdeaCard extends StatelessWidget {
                     if (category.isNotEmpty)
                       _Tag(
                         label: category,
-                        bgColor: const Color(0xFFEDE9FE),
-                        textColor: _purple,
+                        bgColor: colorScheme.primaryContainer.withOpacity(isDark ? 0.3 : 1.0),
+                        textColor: isDark ? colorScheme.primary : colorScheme.onPrimaryContainer,
                       ),
                     _Tag(
                       icon: patented
@@ -406,11 +408,11 @@ class _IdeaCard extends StatelessWidget {
                           : Icons.block_outlined,
                       label: patented ? 'Patented' : 'Not Patented',
                       bgColor: patented
-                          ? const Color(0xFFDCFCE7)
-                          : const Color(0xFFF1F5F9),
+                          ? const Color(0xFFDCFCE7).withOpacity(isDark ? 0.2 : 1.0)
+                          : colorScheme.surfaceContainerHighest,
                       textColor: patented
                           ? const Color(0xFF16A34A)
-                          : const Color(0xFF6B7280),
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ],
                 ),
@@ -423,18 +425,21 @@ class _IdeaCard extends StatelessWidget {
                       icon: Icons.thumb_up_alt_outlined,
                       value: '$likes',
                       label: 'Likes',
+                      colorScheme: colorScheme,
                     ),
                     const SizedBox(width: 12),
                     _StatChip(
                       icon: Icons.people_outline,
                       value: '$interested',
                       label: 'Interested',
+                      colorScheme: colorScheme,
                     ),
                     const SizedBox(width: 12),
                     _StatChip(
                       icon: Icons.attach_money,
                       value: '\$$basePrice',
                       label: 'Base Price',
+                      colorScheme: colorScheme,
                     ),
                   ],
                 ),
@@ -447,15 +452,15 @@ class _IdeaCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFFBEB),
+                      color: colorScheme.tertiaryContainer.withOpacity(isDark ? 0.2 : 0.4),
                       borderRadius: BorderRadius.circular(10),
                       border:
-                      Border.all(color: const Color(0xFFFDE68A)),
+                      Border.all(color: colorScheme.tertiary.withOpacity(0.2)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.calendar_today_outlined,
-                            size: 14, color: Color(0xFFD97706)),
+                        Icon(Icons.calendar_today_outlined,
+                            size: 14, color: colorScheme.tertiary),
                         const SizedBox(width: 6),
                         Text(
                           [biddingDate, biddingTime]
@@ -463,7 +468,7 @@ class _IdeaCard extends StatelessWidget {
                               .join('  •  '),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
-                            color: const Color(0xFF92400E),
+                            color: colorScheme.onTertiaryContainer,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -481,8 +486,8 @@ class _IdeaCard extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: status == 'rejected'
-                          ? const Color(0xFFFFE4E6)
-                          : const Color(0xFFFFF3CD),
+                          ? colorScheme.errorContainer.withOpacity(isDark ? 0.3 : 0.6)
+                          : colorScheme.tertiaryContainer.withOpacity(isDark ? 0.3 : 0.6),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -492,8 +497,8 @@ class _IdeaCard extends StatelessWidget {
                           Icons.info_outline,
                           size: 15,
                           color: status == 'rejected'
-                              ? Colors.redAccent
-                              : const Color(0xFFD97706),
+                              ? colorScheme.error
+                              : colorScheme.tertiary,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -506,8 +511,8 @@ class _IdeaCard extends StatelessWidget {
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: status == 'rejected'
-                                      ? Colors.redAccent
-                                      : const Color(0xFF92400E),
+                                      ? colorScheme.onErrorContainer
+                                      : colorScheme.onTertiaryContainer,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -516,8 +521,8 @@ class _IdeaCard extends StatelessWidget {
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   color: status == 'rejected'
-                                      ? const Color(0xFF9B1C1C)
-                                      : const Color(0xFF78350F),
+                                      ? colorScheme.onErrorContainer
+                                      : colorScheme.onTertiaryContainer,
                                   height: 1.4,
                                 ),
                               ),
@@ -537,23 +542,17 @@ class _IdeaCard extends StatelessWidget {
                     height: 44,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [_gradientStart, _gradientEnd],
+                        gradient: LinearGradient(
+                          colors: [colorScheme.primary, colorScheme.secondary],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: TextButton(
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                IdeaBiddingScreen(ideaTitle: title),
-                          ),
-                        ),
+                        onPressed: () => navigateSmoothly(context, IdeaBiddingScreen(ideaTitle: title)),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
+                          foregroundColor: colorScheme.onPrimary,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
@@ -579,6 +578,9 @@ class _IdeaCard extends StatelessWidget {
 
 // ─── Animated "reviewing" dot ─────────────────────────────────────────────────
 class _AnimatedDot extends StatefulWidget {
+  final ColorScheme colorScheme;
+  const _AnimatedDot({required this.colorScheme});
+
   @override
   State<_AnimatedDot> createState() => _AnimatedDotState();
 }
@@ -613,9 +615,9 @@ class _AnimatedDotState extends State<_AnimatedDot>
       child: Container(
         width: 8,
         height: 8,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Color(0xFF6B7280),
+          color: widget.colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -627,10 +629,13 @@ class _StatChip extends StatelessWidget {
   final IconData icon;
   final String value;
   final String label;
+  final ColorScheme colorScheme;
+
   const _StatChip({
     required this.icon,
     required this.value,
     required this.label,
+    required this.colorScheme,
   });
 
   @override
@@ -638,14 +643,14 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: _purple),
+          Icon(icon, size: 13, color: colorScheme.primary),
           const SizedBox(width: 4),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -655,14 +660,14 @@ class _StatChip extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF111827),
+                  color: colorScheme.onSurface,
                 ),
               ),
               Text(
                 label,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 10,
-                  color: const Color(0xFF9CA3AF),
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -718,7 +723,8 @@ class _Tag extends StatelessWidget {
 // ─── Notification Bell ────────────────────────────────────────────────────────
 class _NotificationBell extends StatelessWidget {
   final String? uid;
-  const _NotificationBell({required this.uid});
+  final ColorScheme colorScheme;
+  const _NotificationBell({required this.uid, required this.colorScheme});
 
   Stream<int> get _unreadCount {
     if (uid == null) return Stream.value(0);
@@ -734,12 +740,7 @@ class _NotificationBell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NotificationsScreen(uid: uid),
-        ),
-      ),
+      onTap: () => navigateSmoothly(context, NotificationsScreen(uid: uid)),
       child: Padding(
         padding: const EdgeInsets.only(right: 12),
         child: StreamBuilder<int>(
@@ -749,24 +750,24 @@ class _NotificationBell extends StatelessWidget {
             return Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_outlined,
-                    color: Color(0xFF374151), size: 26),
+                Icon(Icons.notifications_outlined,
+                    color: colorScheme.onSurface, size: 26),
                 if (count > 0)
                   Positioned(
                     top: -4,
                     right: -4,
                     child: Container(
                       padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Colors.redAccent,
+                      decoration: BoxDecoration(
+                        color: colorScheme.error,
                         shape: BoxShape.circle,
                       ),
                       constraints: const BoxConstraints(
                           minWidth: 16, minHeight: 16),
                       child: Text(
                         count > 9 ? '9+' : '$count',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: colorScheme.onPrimary, // High-contrast for count badge
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
                         ),
@@ -783,203 +784,12 @@ class _NotificationBell extends StatelessWidget {
   }
 }
 
-// ─── Notifications Screen ─────────────────────────────────────────────────────
-class NotificationsScreen extends StatelessWidget {
-  final String? uid;
-  const NotificationsScreen({super.key, required this.uid});
-
-  Stream<QuerySnapshot<Map<String, dynamic>>> get _stream {
-    if (uid == null) return const Stream.empty();
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('notifications')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-  }
-
-  Future<void> _markRead(String uid, String docId) async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('notifications')
-        .doc(docId)
-        .update({'read': true});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bgColor,
-      body: Column(
-        children: [
-          SafeArea(
-            bottom: false,
-            child: Container(
-              color: Colors.white,
-              padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back,
-                        color: Color(0xFF374151), size: 22),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Notifications',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF111827),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _stream,
-              builder: (_, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: _purple),
-                  );
-                }
-                final docs = snap.data?.docs ?? [];
-                if (docs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.notifications_none_outlined,
-                            size: 48, color: Color(0xFFD1D5DB)),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No notifications yet',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: const Color(0xFF9CA3AF),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-                  itemCount: docs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (_, i) {
-                    final d    = docs[i].data();
-                    final read = d['read'] as bool? ?? false;
-                    final type = d['type'] as String? ?? '';
-
-                    Color dotColor;
-                    IconData notifIcon;
-                    if (type == 'approved') {
-                      dotColor  = const Color(0xFF16A34A);
-                      notifIcon = Icons.check_circle_outline;
-                    } else if (type == 'rejected') {
-                      dotColor  = Colors.redAccent;
-                      notifIcon = Icons.cancel_outlined;
-                    } else if (type == 'on_hold') {
-                      dotColor  = const Color(0xFFF59E0B);
-                      notifIcon = Icons.pause_circle_outline;
-                    } else {
-                      dotColor  = _purple;
-                      notifIcon = Icons.notifications_outlined;
-                    }
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (!read && uid != null) {
-                          _markRead(uid!, docs[i].id);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: read
-                              ? Colors.white
-                              : _purple.withOpacity(0.04),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: read
-                                ? const Color(0xFFE5E7EB)
-                                : _purple.withOpacity(0.2),
-                          ),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: dotColor.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(notifIcon,
-                                  size: 18, color: dotColor),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    d['title'] as String? ?? '',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF111827),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    d['body'] as String? ?? '',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13,
-                                      color: const Color(0xFF6B7280),
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (!read)
-                              Container(
-                                width: 8,
-                                height: 8,
-                                margin: const EdgeInsets.only(top: 4),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: dotColor,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 class _EmptyState extends StatelessWidget {
   final String tabLabel;
-  const _EmptyState({required this.tabLabel});
+  final ColorScheme colorScheme;
+  const _EmptyState({required this.tabLabel, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {
@@ -987,8 +797,8 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.lightbulb_outline,
-              size: 52, color: Color(0xFFD1D5DB)),
+          Icon(Icons.lightbulb_outline,
+              size: 52, color: colorScheme.outlineVariant),
           const SizedBox(height: 12),
           Text(
             tabLabel == 'All'
@@ -997,7 +807,7 @@ class _EmptyState extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF6B7280),
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 6),
@@ -1007,7 +817,7 @@ class _EmptyState extends StatelessWidget {
                 : 'Check back later',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
-              color: const Color(0xFF9CA3AF),
+              color: colorScheme.onSurfaceVariant.withOpacity(0.7),
             ),
           ),
         ],
@@ -1019,7 +829,8 @@ class _EmptyState extends StatelessWidget {
 // ─── Error View ───────────────────────────────────────────────────────────────
 class _ErrorView extends StatelessWidget {
   final String message;
-  const _ErrorView({required this.message});
+  final ColorScheme colorScheme;
+  const _ErrorView({required this.message, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {
@@ -1029,7 +840,7 @@ class _ErrorView extends StatelessWidget {
         child: Text(
           'Error: $message',
           style: GoogleFonts.plusJakartaSans(
-            color: const Color(0xFF6B7280),
+            color: colorScheme.onSurfaceVariant,
             fontSize: 13,
           ),
           textAlign: TextAlign.center,

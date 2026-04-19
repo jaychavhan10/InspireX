@@ -3,11 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_verify_profiles_screen.dart';
 import 'admin_verify_ideas_screen.dart';
-
-const _purple        = Color(0xFF7C3AED);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd   = Color(0xFF3B82F6);
-const _bgColor       = Color(0xFFF8FAFC);
+import '../utils/transitions.dart';
 
 class AdminHomeScreen extends StatelessWidget {
   final String adminName;
@@ -15,11 +11,14 @@ class AdminHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: colorScheme.surface,
       body: Column(
         children: [
-          _buildAppBar(context),
+          _buildAppBar(context, colorScheme),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
@@ -31,32 +30,32 @@ class AdminHomeScreen extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_gradientStart, _gradientEnd],
+                      gradient: LinearGradient(
+                        colors: [colorScheme.primary, colorScheme.secondary],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                            color: _purple.withOpacity(0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6)),
+                            color: colorScheme.primary.withOpacity(0.2),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4)),
                       ],
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 52, height: 52,
+                          width: 48, height: 48,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.2),
+                            color: colorScheme.onPrimary.withOpacity(0.15),
                           ),
-                          child: const Icon(
+                          child: Icon(
                               Icons.admin_panel_settings_outlined,
-                              color: Colors.white, size: 26),
+                              color: colorScheme.onPrimary, size: 24),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment:
@@ -64,33 +63,33 @@ class AdminHomeScreen extends StatelessWidget {
                             children: [
                               Text('Welcome back,',
                                   style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13,
-                                      color: Colors.white
-                                          .withOpacity(0.85))),
+                                      fontSize: 12,
+                                      color: colorScheme.onPrimary
+                                          .withOpacity(0.8))),
                               Text(adminName,
                                   style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 18,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.white)),
+                                      color: colorScheme.onPrimary)),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   Text('Admin Actions',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF111827))),
-                  const SizedBox(height: 6),
+                          color: colorScheme.onSurface)),
+                  const SizedBox(height: 4),
                   Text('Review and manage platform content',
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: const Color(0xFF6B7280))),
-                  const SizedBox(height: 20),
+                          fontSize: 12,
+                          color: colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 16),
 
                   // Verify Profiles card
                   _AdminActionCard(
@@ -98,15 +97,13 @@ class AdminHomeScreen extends StatelessWidget {
                     title: 'Verify Profiles',
                     subtitle:
                     'Review submitted user profiles, check ID & KYC documents, approve or reject accounts.',
-                    gradientColors: const [
-                      Color(0xFF7C3AED),
-                      Color(0xFF8B5CF6)
+                    gradientColors: [
+                      colorScheme.primary,
+                      colorScheme.secondary,
                     ],
-                    onTap: () => Navigator.push(
+                    onTap: () => navigateSmoothly(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) =>
-                          const AdminVerifyProfilesScreen()),
+                      const AdminVerifyProfilesScreen(),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -117,15 +114,13 @@ class AdminHomeScreen extends StatelessWidget {
                     title: 'Verify Ideas',
                     subtitle:
                     'Review submitted idea submissions, check patent documents, approve or reject ideas for the marketplace.',
-                    gradientColors: const [
-                      Color(0xFF3B82F6),
-                      Color(0xFF06B6D4)
+                    gradientColors: [
+                      colorScheme.tertiary,
+                      colorScheme.secondary,
                     ],
-                    onTap: () => Navigator.push(
+                    onTap: () => navigateSmoothly(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) =>
-                          const AdminVerifyIdeasScreen()),
+                      const AdminVerifyIdeasScreen(),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -136,12 +131,12 @@ class AdminHomeScreen extends StatelessWidget {
                       _StatCard(
                           label: 'Pending Profiles',
                           icon: Icons.hourglass_empty_outlined,
-                          color: const Color(0xFFF59E0B)),
+                          color: const Color(0xFFFBBF24)),
                       const SizedBox(width: 12),
                       _StatCard(
                           label: 'Pending Ideas',
                           icon: Icons.pending_outlined,
-                          color: const Color(0xFF3B82F6)),
+                          color: colorScheme.primary),
                     ],
                   ),
                 ],
@@ -153,62 +148,70 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
+  Widget _buildAppBar(BuildContext context, ColorScheme colorScheme) {
     return SafeArea(
       bottom: false,
       child: Container(
-        color: Colors.white,
+        color: colorScheme.surface,
         padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 12),
+            horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Expanded(
               child: Center(
                 child: Text('InspireX',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: _purple,
-                        letterSpacing: 0.5)),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: colorScheme.primary,
+                        letterSpacing: -0.5)),
               ),
             ),
             GestureDetector(
               onTap: () {
                 showDialog(
                   context: context,
-                  builder: (_) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    title: Text('Logout',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700)),
-                    content: Text('Are you sure you want to logout?',
-                        style:
-                        GoogleFonts.plusJakartaSans(fontSize: 14)),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Cancel',
-                            style: GoogleFonts.plusJakartaSans(
-                                color: const Color(0xFF6B7280))),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          Navigator.pushNamedAndRemoveUntil(
-                              context, '/login', (_) => false);
-                        },
-                        child: Text('Logout',
-                            style: GoogleFonts.plusJakartaSans(
-                                color: Colors.redAccent,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                    ],
+                  builder: (_) => Theme(
+                    data: Theme.of(context),
+                    child: AlertDialog(
+                      backgroundColor: colorScheme.surface,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      title: Text('Logout',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: colorScheme.onSurface)),
+                      content: Text('Are you sure you want to logout?',
+                          style:
+                          GoogleFonts.plusJakartaSans(fontSize: 13, color: colorScheme.onSurfaceVariant)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('Cancel',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: colorScheme.onSurfaceVariant)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.pushNamedAndRemoveUntil(
+                                context, '/login', (_) => false);
+                          },
+                          child: Text('Logout',
+                              style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: colorScheme.error,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
-              child: const Icon(Icons.logout,
-                  color: Colors.redAccent, size: 22),
+              child: Icon(Icons.logout,
+                  color: colorScheme.error, size: 20),
             ),
           ],
         ),
@@ -235,26 +238,27 @@ class _AdminActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 14,
-                offset: const Offset(0, 4)),
+                color: colorScheme.scrim.withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3)),
           ],
         ),
         child: Row(
           children: [
             // Coloured left accent
             Container(
-              width: 6,
-              height: 110,
+              width: 5,
+              height: 100,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: gradientColors,
@@ -262,52 +266,52 @@ class _AdminActionCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  bottomLeft: Radius.circular(18),
+                  topLeft: Radius.circular(14),
+                  bottomLeft: Radius.circular(14),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             // Icon
             Container(
-              width: 52, height: 52,
+              width: 48, height: 48,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: gradientColors,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: Colors.white, size: 26),
+              child: Icon(icon, color: colorScheme.onPrimary, size: 24),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             // Text
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 18),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
                         style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: const Color(0xFF111827))),
-                    const SizedBox(height: 4),
+                            color: colorScheme.onSurface)),
+                    const SizedBox(height: 2),
                     Text(subtitle,
                         style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: const Color(0xFF6B7280),
-                            height: 1.4)),
+                            fontSize: 11,
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.3)),
                   ],
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(right: 14),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
               child: Icon(Icons.chevron_right,
-                  color: Color(0xFF9CA3AF), size: 22),
+                  color: colorScheme.onSurfaceVariant.withOpacity(0.4), size: 20),
             ),
           ],
         ),
@@ -353,17 +357,18 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 3)),
+                color: colorScheme.scrim.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
           ],
         ),
         child: StreamBuilder<int>(
@@ -373,18 +378,18 @@ class _StatCard extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(height: 10),
+                Icon(icon, color: color, size: 20),
+                const SizedBox(height: 8),
                 Text('$count',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28,
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF111827))),
-                const SizedBox(height: 2),
+                        color: colorScheme.onSurface)),
+                const SizedBox(height: 1),
                 Text(label,
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: const Color(0xFF6B7280))),
+                        fontSize: 11,
+                        color: colorScheme.onSurfaceVariant)),
               ],
             );
           },

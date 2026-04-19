@@ -3,12 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const _purple        = Color(0xFF7C3AED);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd   = Color(0xFF3B82F6);
-const _bgColor       = Color(0xFFF8FAFC);
-
 // ─── Bid model ────────────────────────────────────────────────────────────────
 class _Bid {
   final String   id;
@@ -122,7 +116,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
       if (!mounted || _biddingEnded) return;
       final bidder = (_otherBidders..shuffle()).first;
       final amounts = [500, 1000, 2000, 3000, 5000];
-      final amount  = (amounts..shuffle()).first as int;
+      final amount  = (amounts..shuffle()).first;
       _addBid(bidder['name'] as String, amount,
           isMe: false, color: bidder['color'] as Color);
     });
@@ -162,99 +156,105 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-          left: 20, right: 20, top: 18,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
-                  borderRadius: BorderRadius.circular(2),
+      builder: (_) {
+        final colorScheme = Theme.of(context).colorScheme;
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 18,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 14),
-            Text('Enter Custom Amount',
+              const SizedBox(height: 14),
+              Text('Enter Custom Amount',
+                  style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.onSurface)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _customAmountController,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF111827))),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _customAmountController,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: GoogleFonts.plusJakartaSans(fontSize: 14),
-              decoration: InputDecoration(
-                prefixText: '\$ ',
-                hintText: '0',
-                hintStyle: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF9CA3AF)),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: _purple, width: 1.5),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    fontSize: 14, color: colorScheme.onSurface),
+                decoration: InputDecoration(
+                  prefixText: '\$ ',
+                  prefixStyle: GoogleFonts.plusJakartaSans(color: colorScheme.onSurface),
+                  hintText: '0',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                      color: colorScheme.onSurfaceVariant),
+                  filled: true,
+                  fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: colorScheme.outlineVariant),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_gradientStart, _gradientEnd],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [colorScheme.primary, colorScheme.secondary],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: TextButton(
-                  onPressed: () {
-                    final val = int.tryParse(
-                        _customAmountController.text.trim());
-                    if (val != null && val > 0) {
-                      Navigator.pop(context);
-                      _placeBid(val);
-                    }
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                  child: TextButton(
+                    onPressed: () {
+                      final val = int.tryParse(
+                          _customAmountController.text.trim());
+                      if (val != null && val > 0) {
+                        Navigator.pop(context);
+                        _placeBid(val);
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.onPrimary,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text('Place Bid',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14, fontWeight: FontWeight.w600)),
                   ),
-                  child: Text('Place Bid',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14, fontWeight: FontWeight.w600)),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -277,32 +277,33 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: colorScheme.surface,
       body: Column(
         children: [
-          _buildAppBar(),
-          _buildInfoStrip(),
-          Expanded(child: _buildBidFeed()),
-          if (!_biddingEnded) _buildQuickBidPanel(),
-          if (_biddingEnded)  _buildEndedBanner(),
+          _buildAppBar(colorScheme),
+          _buildInfoStrip(colorScheme),
+          Expanded(child: _buildBidFeed(colorScheme)),
+          if (!_biddingEnded) _buildQuickBidPanel(colorScheme),
+          if (_biddingEnded)  _buildEndedBanner(colorScheme),
         ],
       ),
     );
   }
 
   // ── App Bar ───────────────────────────────────────────────────────────────
-  Widget _buildAppBar() {
+  Widget _buildAppBar(ColorScheme colorScheme) {
     return SafeArea(
       bottom: false,
       child: Container(
-        color: Colors.white,
+        color: colorScheme.surface,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back,
-                  color: Color(0xFF374151), size: 22),
+              icon: Icon(Icons.arrow_back,
+                  color: colorScheme.onSurface, size: 22),
               onPressed: () => Navigator.pop(context),
             ),
             Expanded(
@@ -313,7 +314,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,           // ↓ was 18
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF111827),
+                  color: colorScheme.onSurface,
                 ),
               ),
             ),
@@ -325,10 +326,11 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
   }
 
   // ── Timer + price strip ───────────────────────────────────────────────────
-  Widget _buildInfoStrip() {
+  Widget _buildInfoStrip(ColorScheme colorScheme) {
     final isUrgent = _timeRemaining < 600 && !_biddingEnded;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      color: Colors.white,
+      color: isDark ? colorScheme.surfaceContainer : colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
       child: Column(
         children: [
@@ -337,24 +339,24 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.access_time_outlined,
-                  color: isUrgent ? Colors.redAccent : _purple, size: 16), // ↓ was 20
+                  color: isUrgent ? colorScheme.error : colorScheme.primary, size: 16), // ↓ was 20
               const SizedBox(width: 5),
               Column(
                 children: [
                   Text('Time Remaining',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,           // ↓ was 12
-                          color: const Color(0xFF6B7280))),
+                          color: colorScheme.onSurfaceVariant)),
                   Text(
                     _biddingEnded ? 'Ended' : _formatTime(_timeRemaining),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 17,               // ↓ was 20
                       fontWeight: FontWeight.w700, // ↓ was w800
                       color: _biddingEnded
-                          ? const Color(0xFF6B7280)
+                          ? colorScheme.onSurfaceVariant
                           : isUrgent
-                          ? Colors.redAccent
-                          : const Color(0xFF111827),
+                          ? colorScheme.error
+                          : colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -369,8 +371,8 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  _purple.withOpacity(0.06),
-                  _gradientEnd.withOpacity(0.06),
+                  colorScheme.primary.withOpacity(0.06),
+                  colorScheme.secondary.withOpacity(0.06),
                 ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
@@ -382,21 +384,21 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                 Text('Current Bid',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,           // ↓ was 13
-                        color: const Color(0xFF6B7280))),
+                        color: colorScheme.onSurfaceVariant)),
                 const SizedBox(height: 2),
                 Text(
                   '\$${_currentPrice.toLocaleString()}',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 22,               // ↓ was 26
                     fontWeight: FontWeight.w700, // ↓ was w800
-                    color: _purple,
+                    color: colorScheme.primary,
                   ),
                 ),
                 Text(
                   'Base: \$${_basePrice.toLocaleString()}',
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,             // ↓ was 12
-                      color: const Color(0xFF9CA3AF)),
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.7)),
                 ),
               ],
             ),
@@ -407,18 +409,18 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
   }
 
   // ── Bid feed ──────────────────────────────────────────────────────────────
-  Widget _buildBidFeed() {
+  Widget _buildBidFeed(ColorScheme colorScheme) {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       itemCount: _bids.length,
-      itemBuilder: (_, i) => _buildBidBubble(_bids[i]),
+      itemBuilder: (_, i) => _buildBidBubble(_bids[i], colorScheme),
     );
   }
 
-  Widget _buildBidBubble(_Bid bid) {
+  Widget _buildBidBubble(_Bid bid, ColorScheme colorScheme) {
     final isMe = bid.isMe;
-    final avatarColor = isMe ? _purple : _colorFor(bid.investorName);
+    final avatarColor = isMe ? colorScheme.primary : _colorFor(bid.investorName);
     final timeStr = '${bid.timestamp.hour.toString().padLeft(2, '0')}:'
         '${bid.timestamp.minute.toString().padLeft(2, '0')} '
         '${bid.timestamp.hour < 12 ? 'AM' : 'PM'}';
@@ -440,7 +442,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
               child: Center(
                 child: Text(_initials(bid.investorName),
                     style: GoogleFonts.plusJakartaSans(
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                         fontSize: 11,             // ↓ was 13
                         fontWeight: FontWeight.w600)),
               ),
@@ -457,13 +459,13 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                   horizontal: 12, vertical: 10),  // ↓ was 14/12
               decoration: BoxDecoration(
                 gradient: isMe
-                    ? const LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                    ? LinearGradient(
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
                     : null,
-                color: isMe ? null : Colors.white,
+                color: isMe ? null : colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: BorderRadius.only(
                   topLeft:     const Radius.circular(14),
                   topRight:    const Radius.circular(14),
@@ -472,7 +474,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: colorScheme.scrim.withOpacity(0.06),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -489,8 +491,8 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                       fontSize: 12,               // ↓ was 13
                       fontWeight: FontWeight.w600,
                       color: isMe
-                          ? Colors.white
-                          : const Color(0xFF111827),
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -500,7 +502,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                       fontSize: 14,               // ↓ was 16
                       fontWeight: FontWeight.w700, // ↓ was w800
                       color: isMe
-                          ? Colors.white
+                          ? colorScheme.onPrimary
                           : const Color(0xFF16A34A),
                     ),
                   ),
@@ -510,8 +512,8 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,               // ↓ was 11
                       color: isMe
-                          ? Colors.white.withOpacity(0.65)
-                          : const Color(0xFF9CA3AF),
+                          ? colorScheme.onPrimary.withOpacity(0.65)
+                          : colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -525,15 +527,15 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
             Container(
               width: 34,                          // ↓ was 40
               height: 34,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
-              child: const Icon(Icons.person, color: Colors.white, size: 17),
+              child: Icon(Icons.person, color: colorScheme.onPrimary, size: 17),
             ),
           ],
         ],
@@ -542,9 +544,9 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
   }
 
   // ── Quick bid panel ───────────────────────────────────────────────────────
-  Widget _buildQuickBidPanel() {
+  Widget _buildQuickBidPanel(ColorScheme colorScheme) {
     return Container(
-      color: Colors.white,
+      color: colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 18), // ↓ was 16/12/20
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -552,7 +554,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
           Text('Quick Bid',
               style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,                   // ↓ was 13
-                  color: const Color(0xFF6B7280),
+                  color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           GridView.count(
@@ -567,8 +569,8 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                 onTap: () => _placeBid(amount),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [_gradientStart, _gradientEnd],
+                    gradient: LinearGradient(
+                      colors: [colorScheme.primary, colorScheme.secondary],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
@@ -580,7 +582,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,             // ↓ was 13
                         fontWeight: FontWeight.w600, // ↓ was w700
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                       ),
                     ),
                   ),
@@ -595,8 +597,8 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
             child: TextButton(
               onPressed: _showCustomAmountDialog,
               style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFFF1F5F9),
-                foregroundColor: const Color(0xFF374151),
+                backgroundColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                foregroundColor: colorScheme.onSurface,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
@@ -604,7 +606,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,             // ↓ was 14
                       fontWeight: FontWeight.w500, // ↓ was w600
-                      color: const Color(0xFF374151))),
+                      color: colorScheme.onSurface)),
             ),
           ),
         ],
@@ -613,29 +615,29 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
   }
 
   // ── Bidding ended banner ──────────────────────────────────────────────────
-  Widget _buildEndedBanner() {
+  Widget _buildEndedBanner(ColorScheme colorScheme) {
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: colorScheme.surface,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), // ↓ was 16/28
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(12),  // ↓ was 14
             decoration: BoxDecoration(
-              color: const Color(0xFFF3E8FF),
+              color: colorScheme.primaryContainer.withOpacity(0.3),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.gavel, color: _purple, size: 18), // ↓ was 20
+                Icon(Icons.gavel, color: colorScheme.primary, size: 18), // ↓ was 20
                 const SizedBox(width: 7),
                 Text('Bidding has ended!',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,           // ↓ was 15
                         fontWeight: FontWeight.w600, // ↓ was w700
-                        color: _purple)),
+                        color: colorScheme.primary)),
               ],
             ),
           ),
@@ -645,7 +647,7 @@ class _IdeaBiddingScreenState extends State<IdeaBiddingScreen> {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,                     // ↓ was 18
               fontWeight: FontWeight.w700,       // ↓ was w800
-              color: const Color(0xFF111827),
+              color: colorScheme.onSurface,
             ),
           ),
         ],

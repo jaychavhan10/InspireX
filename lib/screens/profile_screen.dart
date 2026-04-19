@@ -8,22 +8,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const _purple        = Color(0xFF7C3AED);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd   = Color(0xFF3B82F6);
-const _bgColor       = Color(0xFFF8FAFC);
-
 const _domains = [
   'Food', 'AI', 'Automobile', 'Healthcare',
   'Blockchain', 'IoT', 'Sustainability', 'FinTech',
 ];
 
 // ── 4 built-in avatars (gradient combos + icon) ───────────────────────────────
-const _avatarOptions = [
-  {'bg': [Color(0xFF7C3AED), Color(0xFF3B82F6)], 'icon': Icons.person},
-  {'bg': [Color(0xFFEC4899), Color(0xFFF97316)], 'icon': Icons.person},
-  {'bg': [Color(0xFF10B981), Color(0xFF06B6D4)], 'icon': Icons.person},
-  {'bg': [Color(0xFFF59E0B), Color(0xFFEF4444)], 'icon': Icons.person},
+List<Map<String, dynamic>> _getAvatarOptions(ColorScheme colorScheme) => [
+  {'bg': [colorScheme.primary, colorScheme.secondary], 'icon': Icons.person},
+  {'bg': [colorScheme.tertiary, colorScheme.secondary], 'icon': Icons.person},
+  {'bg': [colorScheme.primary, colorScheme.tertiary], 'icon': Icons.person},
+  {'bg': [colorScheme.secondary, colorScheme.primary], 'icon': Icons.person},
 ];
 
 enum _AccountType { contributor, investor, both }
@@ -173,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Save to Firestore ─────────────────────────────────────────────────────
-  Future<void> _saveChanges() async {
+  Future<void> _saveChanges(ColorScheme colorScheme) async {
     setState(() => _saving = true);
 
     try {
@@ -230,7 +225,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .set(updateData, SetOptions(merge: true));
 
       setState(() => _saving = false);
-      _showSnack('Profile saved successfully!', color: _purple);
+      _showSnack('Profile saved successfully!', color: colorScheme.primary);
     } catch (e) {
       debugPrint('[Profile] save error: $e');
       setState(() => _saving = false);
@@ -239,39 +234,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Avatar picker bottom sheet ────────────────────────────────────────────
-  void _showAvatarPicker() {
+  void _showAvatarPicker(ColorScheme colorScheme) {
+    final avatarOptions = _getAvatarOptions(colorScheme);
     showModalBottomSheet(
       context: context,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Handle
             Container(
-              width: 40, height: 4,
+              width: 32, height: 4,
               decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
+                  color: colorScheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2)),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 16),
             Text('Choose your Avatar',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827))),
-            const SizedBox(height: 6),
+                    color: colorScheme.onSurface)),
+            const SizedBox(height: 4),
             Text('Pick one of the avatars below',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    color: const Color(0xFF6B7280))),
-            const SizedBox(height: 24),
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(_avatarOptions.length, (i) {
-                final colors = _avatarOptions[i]['bg'] as List<Color>;
+              children: List.generate(avatarOptions.length, (i) {
+                final colors = avatarOptions[i]['bg'] as List<Color>;
                 final isSelected = _selectedAvatar == i;
                 return GestureDetector(
                   onTap: () {
@@ -280,8 +277,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: 70,
-                    height: 70,
+                    width: 64,
+                    height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -291,23 +288,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       border: isSelected
                           ? Border.all(
-                          color: const Color(0xFF111827),
+                          color: colorScheme.primary,
                           width: 3)
                           : null,
                       boxShadow: isSelected
                           ? [
                         BoxShadow(
-                          color: colors.first.withOpacity(0.5),
-                          blurRadius: 12,
+                          color: colors.first.withOpacity(0.4),
+                          blurRadius: 10,
                           offset: const Offset(0, 4),
                         )
                       ]
                           : [],
                     ),
                     child: Icon(
-                      _avatarOptions[i]['icon'] as IconData,
-                      color: Colors.white,
-                      size: 34,
+                      avatarOptions[i]['icon'] as IconData,
+                      color: colorScheme.onPrimary,
+                      size: 30,
                     ),
                   ),
                 );
@@ -321,9 +318,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Document picker ───────────────────────────────────────────────────────
-  Future<void> _pickDocument(bool isAadhaar) async {
+  Future<void> _pickDocument(bool isAadhaar, ColorScheme colorScheme) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => SafeArea(
@@ -336,34 +334,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
+                    color: colorScheme.outlineVariant,
                     borderRadius: BorderRadius.circular(2)),
               ),
               Text(
                   'Upload ${isAadhaar ? 'Aadhaar' : 'PAN'} Card',
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF111827))),
+                      color: colorScheme.onSurface)),
               const SizedBox(height: 4),
               Text('Max file size: 150 KB',
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: const Color(0xFF6B7280))),
+                      fontSize: 11,
+                      color: colorScheme.onSurfaceVariant)),
               const SizedBox(height: 8),
               ListTile(
-                leading: const Icon(Icons.photo_library_outlined,
-                    color: _purple),
+                leading: Icon(Icons.photo_library_outlined,
+                    color: colorScheme.primary, size: 20),
                 title: Text('Choose from Gallery',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: colorScheme.onSurface)),
                 onTap: () =>
                     Navigator.pop(context, ImageSource.gallery),
               ),
               ListTile(
-                leading: const Icon(Icons.camera_alt_outlined,
-                    color: _purple),
+                leading: Icon(Icons.camera_alt_outlined,
+                    color: colorScheme.primary, size: 20),
                 title: Text('Take a Photo',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 14)),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: colorScheme.onSurface)),
                 onTap: () =>
                     Navigator.pop(context, ImageSource.camera),
               ),
@@ -393,7 +391,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _showSnack(
           'Image is ${(bytes.length / 1024).toStringAsFixed(0)} KB — '
               'please use one under 150 KB.',
-          color: Colors.redAccent);
+          color: colorScheme.error);
       return;
     }
 
@@ -412,12 +410,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         color: Colors.green);
   }
 
-  void _showSnack(String msg, {Color color = Colors.redAccent}) {
+  void _showSnack(String msg, {Color? color}) {
     if (!mounted) return;
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
-          style: GoogleFonts.plusJakartaSans(fontSize: 13)),
-      backgroundColor: color,
+          style: GoogleFonts.plusJakartaSans(
+              fontSize: 12, color: colorScheme.onInverseSurface)),
+      backgroundColor: color ?? colorScheme.inverseSurface,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10)),
@@ -428,52 +428,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final theme       = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark      = theme.brightness == Brightness.dark;
+
     if (_loading) {
-      return const Scaffold(
-        backgroundColor: _bgColor,
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
         body: Center(
-            child: CircularProgressIndicator(color: _purple)),
+            child: CircularProgressIndicator(color: colorScheme.primary)),
       );
     }
 
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: isDark ? colorScheme.surface : colorScheme.surfaceContainerLow,
       body: Column(
         children: [
-          _buildAppBar(),
+          _buildAppBar(colorScheme),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
               children: [
-                _buildAvatarSection(),
-                const SizedBox(height: 20),
+                _buildAvatarSection(colorScheme),
+                const SizedBox(height: 16),
                 _buildSectionCard(
                   icon: Icons.person_outline,
                   title: 'Personal Details',
-                  child: _buildPersonalDetails(),
+                  colorScheme: colorScheme,
+                  child: _buildPersonalDetails(colorScheme),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildSectionCard(
                   icon: Icons.shield_outlined,
                   title: 'ID Verification',
-                  child: _buildIDVerification(),
+                  colorScheme: colorScheme,
+                  child: _buildIDVerification(colorScheme, isDark),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildSectionCard(
                   icon: Icons.credit_card_outlined,
                   title: 'KYC Details',
-                  child: _buildKYCDetails(),
+                  colorScheme: colorScheme,
+                  child: _buildKYCDetails(colorScheme, isDark),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildSectionCard(
                   icon: Icons.work_outline,
                   title: 'Account Type',
-                  child: _buildAccountType(),
+                  colorScheme: colorScheme,
+                  child: _buildAccountType(colorScheme),
                 ),
-                const SizedBox(height: 16),
-                _buildDomainsCard(),
-                const SizedBox(height: 24),
-                _buildSaveButton(),
+                const SizedBox(height: 12),
+                _buildDomainsCard(colorScheme),
+                const SizedBox(height: 20),
+                _buildSaveButton(colorScheme),
               ],
             ),
           ),
@@ -483,24 +491,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── App Bar ───────────────────────────────────────────────────────────────
-  Widget _buildAppBar() {
+  Widget _buildAppBar(ColorScheme colorScheme) {
     return SafeArea(
       bottom: false,
       child: Container(
-        color: Colors.white,
+        color: colorScheme.surface,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
           children: [
             IconButton(
-              icon: const Icon(Icons.arrow_back,
-                  color: Color(0xFF374151), size: 22),
+              icon: Icon(Icons.arrow_back,
+                  color: colorScheme.onSurface, size: 22),
               onPressed: () => Navigator.pop(context),
             ),
             Text('Profile & Settings',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827))),
+                    color: colorScheme.onSurface)),
           ],
         ),
       ),
@@ -508,20 +516,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Avatar section ────────────────────────────────────────────────────────
-  Widget _buildAvatarSection() {
+  Widget _buildAvatarSection(ColorScheme colorScheme) {
+    final avatarOptions = _getAvatarOptions(colorScheme);
     final colors =
-    _avatarOptions[_selectedAvatar]['bg'] as List<Color>;
+    avatarOptions[_selectedAvatar]['bg'] as List<Color>;
 
     return Column(
       children: [
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         GestureDetector(
-          onTap: _showAvatarPicker,
+          onTap: () => _showAvatarPicker(colorScheme),
           child: Stack(
             children: [
               Container(
-                width: 96,
-                height: 96,
+                width: 88,
+                height: 88,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -531,48 +540,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.first.withOpacity(0.4),
-                      blurRadius: 16,
+                      color: colors.first.withOpacity(0.3),
+                      blurRadius: 12,
                       offset: const Offset(0, 6),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.person,
-                    color: Colors.white, size: 48),
+                child: Icon(Icons.person,
+                    color: colorScheme.onPrimary, size: 44),
               ),
               // Small edit badge
               Positioned(
                 bottom: 2, right: 2,
                 child: Container(
-                  width: 26, height: 26,
+                  width: 24, height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white,
+                    color: colorScheme.surface,
                     border: Border.all(
-                        color: const Color(0xFFE5E7EB), width: 1.5),
+                        color: colorScheme.outlineVariant, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: colorScheme.scrim.withOpacity(0.1),
                           blurRadius: 4)
                     ],
                   ),
-                  child: const Icon(Icons.edit,
-                      size: 13, color: Color(0xFF374151)),
+                  child: Icon(Icons.edit,
+                      size: 12, color: colorScheme.onSurface),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         GestureDetector(
-          onTap: _showAvatarPicker,
+          onTap: () => _showAvatarPicker(colorScheme),
           child: Text('Change Avatar',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: _purple)),
+                  color: colorScheme.primary)),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
       ],
     );
   }
@@ -582,34 +591,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required String title,
     required Widget child,
+    required ColorScheme colorScheme,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.07),
+              color: colorScheme.scrim.withOpacity(0.07),
               blurRadius: 14,
               offset: const Offset(0, 4)),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, color: _purple, size: 20),
+              Icon(icon, color: colorScheme.primary, size: 18),
               const SizedBox(width: 8),
               Text(title,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF111827))),
+                      color: colorScheme.onSurface)),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           child,
         ],
       ),
@@ -617,61 +627,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Personal Details ──────────────────────────────────────────────────────
-  Widget _buildPersonalDetails() {
+  Widget _buildPersonalDetails(ColorScheme colorScheme) {
     return Column(
       children: [
         _buildField(
             label: 'Full Name',
             controller: _nameController,
             hint: 'Enter your full name',
+            colorScheme: colorScheme,
             textCapitalization: TextCapitalization.words),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildField(
             label: 'Email Address',
             controller: _emailController,
             hint: 'your.email@example.com',
+            colorScheme: colorScheme,
             keyboardType: TextInputType.emailAddress),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildField(
             label: 'Phone Number',
             controller: _phoneController,
             hint: '+91 XXXXX XXXXX',
+            colorScheme: colorScheme,
             keyboardType: TextInputType.phone),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildField(
             label: 'Location',
             controller: _locationController,
+            colorScheme: colorScheme,
             hint: 'City, State, Country'),
       ],
     );
   }
 
   // ── ID Verification ───────────────────────────────────────────────────────
-  Widget _buildIDVerification() {
+  Widget _buildIDVerification(ColorScheme colorScheme, bool isDark) {
     return Column(
       children: [
         // Info banner
         Container(
-          padding: const EdgeInsets.all(12),
-          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            color: colorScheme.tertiaryContainer.withOpacity(isDark ? 0.2 : 0.4),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colorScheme.tertiary.withOpacity(0.2)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline,
-                  color: Color(0xFFD97706), size: 16),
+              Icon(Icons.info_outline,
+                  color: colorScheme.tertiary, size: 14),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Maximum file size: 150 KB per document. '
                       'Use compressed JPG images for best results.',
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: const Color(0xFF92400E),
-                      height: 1.4),
+                      fontSize: 11,
+                      color: colorScheme.onTertiaryContainer,
+                      height: 1.3),
                 ),
               ),
             ],
@@ -681,57 +695,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
           label: 'Aadhaar Card',
           localFile: _newAadhaarFile,
           savedBase64: _aadhaarBase64,
-          onTap: () => _pickDocument(true),
+          colorScheme: colorScheme,
+          onTap: () => _pickDocument(true, colorScheme),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         _buildUploadBox(
           label: 'PAN Card',
           localFile: _newPanFile,
           savedBase64: _panBase64,
-          onTap: () => _pickDocument(false),
+          colorScheme: colorScheme,
+          onTap: () => _pickDocument(false, colorScheme),
         ),
       ],
     );
   }
 
   // ── KYC Details ───────────────────────────────────────────────────────────
-  Widget _buildKYCDetails() {
+  Widget _buildKYCDetails(ColorScheme colorScheme, bool isDark) {
     return Column(
       children: [
         _buildField(
           label: 'Bank Account Number',
           controller: _bankAccountController,
           hint: 'Enter account number',
+          colorScheme: colorScheme,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildField(
           label: 'IFSC Code',
           controller: _ifscController,
           hint: 'Enter IFSC code',
+          colorScheme: colorScheme,
           textCapitalization: TextCapitalization.characters,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildField(
           label: 'Bank Name',
           controller: _bankNameController,
+          colorScheme: colorScheme,
           hint: 'Enter bank name',
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF),
+            color: colorScheme.secondaryContainer.withOpacity(isDark ? 0.2 : 0.4),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFBFDBFE)),
+            border: Border.all(color: colorScheme.secondary.withOpacity(0.2)),
           ),
           child: RichText(
             text: TextSpan(
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  color: const Color(0xFF1E40AF),
-                  height: 1.5),
+                  fontSize: 12,
+                  color: colorScheme.onSecondaryContainer,
+                  height: 1.4),
               children: const [
                 TextSpan(
                     text: 'Note: ',
@@ -748,12 +767,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Account Type ──────────────────────────────────────────────────────────
-  Widget _buildAccountType() {
+  Widget _buildAccountType(ColorScheme colorScheme) {
     return Row(
       children: [
         _AccountTypeButton(
           label: 'Contributor',
           icon: Icons.description_outlined,
+          colorScheme: colorScheme,
           selected: _accountType == _AccountType.contributor,
           onTap: () =>
               setState(() => _accountType = _AccountType.contributor),
@@ -762,6 +782,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _AccountTypeButton(
           label: 'Investor',
           icon: Icons.work_outline,
+          colorScheme: colorScheme,
           selected: _accountType == _AccountType.investor,
           onTap: () =>
               setState(() => _accountType = _AccountType.investor),
@@ -770,6 +791,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _AccountTypeButton(
           label: 'Both',
           icon: Icons.person_outline,
+          colorScheme: colorScheme,
           selected: _accountType == _AccountType.both,
           onTap: () => setState(() => _accountType = _AccountType.both),
         ),
@@ -778,35 +800,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Interested Domains ────────────────────────────────────────────────────
-  Widget _buildDomainsCard() {
+  Widget _buildDomainsCard(ColorScheme colorScheme) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.07),
+              color: colorScheme.scrim.withOpacity(0.07),
               blurRadius: 14,
               offset: const Offset(0, 4)),
         ],
       ),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Interested Domains',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF111827))),
+                  color: colorScheme.onSurface)),
           const SizedBox(height: 4),
           Text('Select domains you\'re interested in',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13, color: const Color(0xFF6B7280))),
-          const SizedBox(height: 14),
+                  fontSize: 12, color: colorScheme.onSurfaceVariant)),
+          const SizedBox(height: 12),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 8,
+            runSpacing: 8,
             children: _domains.map((domain) {
               final isSelected = _selectedDomains.contains(domain);
               return GestureDetector(
@@ -816,28 +838,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                      horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     gradient: isSelected
-                        ? const LinearGradient(
-                      colors: [_gradientStart, _gradientEnd],
+                        ? LinearGradient(
+                      colors: [colorScheme.primary, colorScheme.secondary],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     )
                         : null,
                     color:
-                    isSelected ? null : const Color(0xFFF1F5F9),
+                    isSelected ? null : colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(domain,
                       style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.w500,
                           color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF374151))),
+                              ? colorScheme.onPrimary
+                              : colorScheme.onSurfaceVariant)),
                 ),
               );
             }).toList(),
@@ -848,40 +870,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // ── Save button ───────────────────────────────────────────────────────────
-  Widget _buildSaveButton() {
+  Widget _buildSaveButton(ColorScheme colorScheme) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 48,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [_gradientStart, _gradientEnd],
+          gradient: LinearGradient(
+            colors: [colorScheme.primary, colorScheme.secondary],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-                color: _purple.withOpacity(0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 5)),
+                color: colorScheme.primary.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: TextButton(
-          onPressed: _saving ? null : _saveChanges,
+          onPressed: _saving ? null : () => _saveChanges(colorScheme),
           style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
+            foregroundColor: colorScheme.onPrimary,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(12)),
           ),
           child: _saving
-              ? const SizedBox(
-              width: 22, height: 22,
+              ? SizedBox(
+              width: 20, height: 20,
               child: CircularProgressIndicator(
-                  strokeWidth: 2.5, color: Colors.white))
+                  strokeWidth: 2.0, color: colorScheme.onPrimary))
               : Text('Save Changes',
               style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16, fontWeight: FontWeight.w700)),
+                  fontSize: 15, fontWeight: FontWeight.w700)),
         ),
       ),
     );
@@ -892,6 +914,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required TextEditingController controller,
     required String hint,
+    required ColorScheme colorScheme,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
     List<TextInputFormatter>? inputFormatters,
@@ -901,9 +924,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(label,
             style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF374151))),
+                color: colorScheme.onSurfaceVariant)),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
@@ -911,26 +934,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           textCapitalization: textCapitalization,
           inputFormatters: inputFormatters,
           style: GoogleFonts.plusJakartaSans(
-              fontSize: 14, color: const Color(0xFF111827)),
+              fontSize: 13, color: colorScheme.onSurface),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: GoogleFonts.plusJakartaSans(
-                fontSize: 14, color: const Color(0xFF9CA3AF)),
+                fontSize: 13, color: colorScheme.onSurfaceVariant.withOpacity(0.7)),
             filled: true,
-            fillColor: const Color(0xFFF8FAFC),
+            fillColor: colorScheme.surfaceContainerHighest.withOpacity(0.5),
             contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 14),
+                horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colorScheme.outlineVariant),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colorScheme.outlineVariant),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _purple, width: 1.5),
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
             ),
           ),
         ),
@@ -943,6 +966,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String label,
     required File? localFile,
     required String? savedBase64,
+    required ColorScheme colorScheme,
     required VoidCallback onTap,
   }) {
     ImageProvider? imageProvider;
@@ -962,60 +986,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
       content = Stack(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(11),
+            borderRadius: BorderRadius.circular(9),
             child: Image(
               image: imageProvider,
-              height: 120,
+              height: 100,
               width: double.infinity,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => Container(
-                height: 120,
-                color: const Color(0xFFF1F5F9),
-                child: const Center(
+                height: 100,
+                color: colorScheme.surfaceContainerHighest,
+                child: Center(
                   child: Icon(Icons.broken_image_outlined,
-                      color: Color(0xFF9CA3AF), size: 32),
+                      color: colorScheme.onSurfaceVariant, size: 28),
                 ),
               ),
             ),
           ),
           // Edit icon
           Positioned(
-            top: 8, right: 8,
+            top: 6, right: 6,
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
+                  color: colorScheme.scrim.withOpacity(0.5),
                   borderRadius: BorderRadius.circular(20)),
-              child: const Icon(Icons.edit,
-                  color: Colors.white, size: 14),
+              child: Icon(Icons.edit,
+                  color: colorScheme.onPrimary, size: 12),
             ),
           ),
           // Status badge
           Positioned(
-            bottom: 8, left: 8,
+            bottom: 6, left: 6,
             child: Container(
               padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 4),
+                  horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: isUnsaved
-                    ? Colors.orange.withOpacity(0.9)
-                    : Colors.green.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(8),
+                    ? colorScheme.error.withOpacity(0.9)
+                    : const Color(0xFF16A34A).withOpacity(0.9),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     isUnsaved ? Icons.upload : Icons.check,
-                    color: Colors.white, size: 12,
+                    color: colorScheme.onPrimary, size: 10,
                   ),
                   const SizedBox(width: 3),
                   Text(
                     isUnsaved ? 'Unsaved' : 'Saved',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: Colors.white),
+                        color: colorScheme.onPrimary),
                   ),
                 ],
               ),
@@ -1025,22 +1049,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     } else {
       content = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: Column(
           children: [
-            const Icon(Icons.upload_outlined,
-                size: 32, color: Color(0xFF94A3B8)),
-            const SizedBox(height: 8),
+            Icon(Icons.upload_outlined,
+                size: 28, color: colorScheme.onSurfaceVariant),
+            const SizedBox(height: 6),
             Text('Upload $label',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: const Color(0xFF475569))),
+                    color: colorScheme.onSurface)),
             const SizedBox(height: 2),
             Text('JPG / PNG  •  Max 150 KB',
                 style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: const Color(0xFF94A3B8))),
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant)),
           ],
         ),
       );
@@ -1051,10 +1075,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(label,
             style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF374151))),
-        const SizedBox(height: 8),
+                color: colorScheme.onSurfaceVariant)),
+        const SizedBox(height: 6),
         GestureDetector(
           onTap: onTap,
           child: AnimatedContainer(
@@ -1062,13 +1086,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               color: imageProvider != null
-                  ? _purple.withOpacity(0.04)
-                  : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
+                  ? colorScheme.primary.withOpacity(0.04)
+                  : colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: imageProvider != null
-                    ? _purple.withOpacity(0.4)
-                    : const Color(0xFFCBD5E1),
+                    ? colorScheme.primary.withOpacity(0.4)
+                    : colorScheme.outlineVariant,
                 width: 1.5,
               ),
             ),
@@ -1085,12 +1109,14 @@ class _AccountTypeButton extends StatelessWidget {
   final String       label;
   final IconData     icon;
   final bool         selected;
+  final ColorScheme  colorScheme;
   final VoidCallback onTap;
 
   const _AccountTypeButton({
     required this.label,
     required this.icon,
     required this.selected,
+    required this.colorScheme,
     required this.onTap,
   });
 
@@ -1101,23 +1127,23 @@ class _AccountTypeButton extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             gradient: selected
-                ? const LinearGradient(
-              colors: [_gradientStart, _gradientEnd],
+                ? LinearGradient(
+              colors: [colorScheme.primary, colorScheme.secondary],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             )
                 : null,
-            color: selected ? null : const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
+            color: selected ? null : colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(10),
             boxShadow: selected
                 ? [
               BoxShadow(
-                  color: _purple.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4))
+                  color: colorScheme.primary.withOpacity(0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3))
             ]
                 : null,
           ),
@@ -1125,20 +1151,20 @@ class _AccountTypeButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon,
-                  size: 24,
+                  size: 22,
                   color: selected
-                      ? Colors.white
-                      : const Color(0xFF64748B)),
-              const SizedBox(height: 6),
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant),
+              const SizedBox(height: 4),
               Text(label,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: selected
                           ? FontWeight.w700
                           : FontWeight.w500,
                       color: selected
-                          ? Colors.white
-                          : const Color(0xFF374151))),
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurfaceVariant)),
             ],
           ),
         ),

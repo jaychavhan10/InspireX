@@ -3,8 +3,14 @@ import 'idea_detail_screen.dart';
 import 'idea_bidding_screen.dart';
 import 'my_ideas_screen.dart';
 import 'profile_screen.dart';
+import 'notifications_screen.dart';
+import 'leaderboard_screen.dart';
+import 'all_bidding_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../theme_manager.dart';
+import '../utils/transitions.dart';
+import '../services/ml_service.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const _purple        = Color(0xFF7C3AED);
@@ -91,7 +97,7 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen>
     with SingleTickerProviderStateMixin {
-  int _selectedIndex = 1;
+  final int _selectedIndex = 1;
 
   String? _selectedCategory;
   final TextEditingController _searchController = TextEditingController();
@@ -174,7 +180,14 @@ class _SearchScreenState extends State<SearchScreen>
   // ── Bottom nav ────────────────────────────────────────────────────────────
   void _onBottomNavTap(int index) {
     if (index == _selectedIndex) return;
-    if (index == 0) Navigator.pop(context);
+    
+    if (index == 0) {
+      Navigator.pop(context);
+    } else if (index == 3) {
+      navigateSmoothly(context, const LeaderboardScreen());
+    } else if (index == 4) {
+      navigateSmoothly(context, const AllBiddingScreen());
+    }
   }
 
   // ── Invite ────────────────────────────────────────────────────────────────
@@ -198,41 +211,41 @@ class _SearchScreenState extends State<SearchScreen>
   // ── Navigate to detail ────────────────────────────────────────────────────
   void _openDetail(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data();
-    Navigator.push(
+    navigateSmoothly(
       context,
-      MaterialPageRoute(
-        builder: (_) => IdeaDetailScreen(
-          ideaId:          doc.id,
-          title:           d['title']            as String? ?? '',
-          description:     d['detailedSolution'] as String? ??
-              d['problemStatement']              as String? ?? '',
-          likes:           d['likes']            as int?    ?? 0,
-          aiRating:        (d['aiRating']        as num?)?.toDouble() ?? 4.0,
-          industry:        d['category']         as String? ?? '',
-          isPatented:      d['isPatented']       as bool?   ?? false,
-          contributorName: d['contributorName']  as String? ?? 'Innovator',
-        ),
+      IdeaDetailScreen(
+        ideaId:          doc.id,
+        title:           d['title']            as String? ?? '',
+        description:     d['detailedSolution'] as String? ??
+            d['problemStatement']              as String? ?? '',
+        likes:           d['likes']            as int?    ?? 0,
+        aiRating:        (d['aiRating']        as num?)?.toDouble() ?? 4.0,
+        industry:        d['category']         as String? ?? '',
+        isPatented:      d['isPatented']       as bool?   ?? false,
+        contributorName: d['contributorName']  as String? ?? 'Innovator',
       ),
     );
   }
 
   // ── Navigate to bidding ───────────────────────────────────────────────────
   void _openBidding(String title) {
-    Navigator.push(
+    navigateSmoothly(
       context,
-      MaterialPageRoute(
-        builder: (_) => IdeaBiddingScreen(ideaTitle: title),
-      ),
+      IdeaBiddingScreen(ideaTitle: title),
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: _bgColor,
+          backgroundColor: isDark ? colorScheme.surface : _bgColor,
           body: Column(
             children: [
               _buildAppBar(),
@@ -295,17 +308,21 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── App Bar ───────────────────────────────────────────────────────────────
   Widget _buildAppBar() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return SafeArea(
       bottom: false,
       child: Container(
-        color: Colors.white,
+        color: isDark ? colorScheme.surface : Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
             GestureDetector(
               onTap: _toggleDrawer,
-              child: const Icon(Icons.menu,
-                  color: Color(0xFF374151), size: 26),
+              child: Icon(Icons.menu,
+                  color: isDark ? colorScheme.onSurface : Color(0xFF374151), size: 26),
             ),
             Expanded(
               child: Center(
@@ -314,16 +331,16 @@ class _SearchScreenState extends State<SearchScreen>
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: _purple,
+                    color: isDark ? colorScheme.primary : _purple,
                     letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
             GestureDetector(
-              onTap: () => Navigator.push(
+              onTap: () => navigateSmoothly(
                 context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                const ProfileScreen(),
               ),
               child: Container(
                 width: 38,
@@ -347,8 +364,13 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── Drawer ────────────────────────────────────────────────────────────────
   Widget _buildDrawer() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Material(
       elevation: 16,
+      color: isDark ? colorScheme.surface : Colors.white,
       child: SizedBox(
         width: 280,
         height: double.infinity,
@@ -357,9 +379,9 @@ class _SearchScreenState extends State<SearchScreen>
           children: [
             Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [_gradientStart, _gradientEnd],
+                  colors: [colorScheme.primary, colorScheme.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -422,11 +444,7 @@ class _SearchScreenState extends State<SearchScreen>
                     label: 'My Ideas',
                     onTap: () {
                       _closeDrawer();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const MyIdeasScreen()),
-                      );
+                      navigateSmoothly(context, const MyIdeasScreen());
                     },
                   ),
                   _DrawerItem(
@@ -434,12 +452,7 @@ class _SearchScreenState extends State<SearchScreen>
                     label: 'Notifications',
                     onTap: () {
                       _closeDrawer();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationsScreen(uid: null),
-                        ),
-                      );
+                      navigateSmoothly(context, NotificationsScreen(uid: null));
                     },
                   ),
                   _DrawerItem(
@@ -447,11 +460,7 @@ class _SearchScreenState extends State<SearchScreen>
                     label: 'Profile',
                     onTap: () {
                       _closeDrawer();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ProfileScreen()),
-                      );
+                      navigateSmoothly(context, const ProfileScreen());
                     },
                   ),
                   _DrawerItem(
@@ -462,10 +471,11 @@ class _SearchScreenState extends State<SearchScreen>
                       icon: Icons.help_outline,
                       label: 'Help & Support',
                       onTap: _closeDrawer),
+                  const _AppearanceToggle(),
                 ],
               ),
             ),
-            const Divider(height: 1, color: Color(0xFFE5E7EB)),
+            Divider(height: 1, color: isDark ? colorScheme.outline : Color(0xFFE5E7EB)),
             InkWell(
               onTap: () {},
               child: Padding(
@@ -473,12 +483,12 @@ class _SearchScreenState extends State<SearchScreen>
                     horizontal: 20, vertical: 20),
                 child: Row(
                   children: [
-                    const Icon(Icons.logout,
-                        color: Colors.redAccent, size: 22),
+                    Icon(Icons.logout,
+                        color: colorScheme.error, size: 22),
                     const SizedBox(width: 12),
                     Text('Logout',
                         style: GoogleFonts.plusJakartaSans(
-                            color: Colors.redAccent,
+                            color: colorScheme.error,
                             fontSize: 15,
                             fontWeight: FontWeight.w600)),
                   ],
@@ -493,38 +503,42 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── Search Bar ────────────────────────────────────────────────────────────
   Widget _buildSearchBar() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colorScheme.surfaceContainerHighest : Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.07),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: isDark ? colorScheme.outline : const Color(0xFFE5E7EB)),
       ),
       child: TextField(
         controller: _searchController,
         onChanged: (v) => setState(() => _searchQuery = v),
         style: GoogleFonts.plusJakartaSans(
-            fontSize: 14, color: const Color(0xFF1F2937)),
+            fontSize: 14, color: isDark ? colorScheme.onSurface : const Color(0xFF1F2937)),
         decoration: InputDecoration(
           hintText: 'Search for interesting ideas...',
           hintStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 14, color: const Color(0xFF9CA3AF)),
-          prefixIcon: const Icon(Icons.search,
-              color: Color(0xFF9CA3AF), size: 22),
+              fontSize: 14, color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF)),
+          prefixIcon: Icon(Icons.search,
+              color: isDark ? colorScheme.onSurfaceVariant : Color(0xFF9CA3AF), size: 22),
           suffixIcon: _searchQuery.isNotEmpty
               ? GestureDetector(
             onTap: () {
               _searchController.clear();
               setState(() => _searchQuery = '');
             },
-            child: const Icon(Icons.close,
-                color: Color(0xFF9CA3AF), size: 20),
+            child: Icon(Icons.close,
+                color: isDark ? colorScheme.onSurfaceVariant : Color(0xFF9CA3AF), size: 20),
           )
               : null,
           border: InputBorder.none,
@@ -537,6 +551,10 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── Categories ────────────────────────────────────────────────────────────
   Widget _buildCategorySection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -544,7 +562,7 @@ class _SearchScreenState extends State<SearchScreen>
           'Browse by Category',
           style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
-              color: const Color(0xFF4B5563),
+              color: isDark ? colorScheme.onSurface : const Color(0xFF4B5563),
               fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 12),
@@ -571,7 +589,7 @@ class _SearchScreenState extends State<SearchScreen>
                   borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: colors.first.withOpacity(0.35),
+                      color: colors.first.withOpacity(isDark ? 0.2 : 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -598,6 +616,10 @@ class _SearchScreenState extends State<SearchScreen>
   // ── Ideas Section ─────────────────────────────────────────────────────────
   Widget _buildIdeasSection(
       List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -606,7 +628,7 @@ class _SearchScreenState extends State<SearchScreen>
           style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF111827)),
+              color: isDark ? colorScheme.onSurface : const Color(0xFF111827)),
         ),
         const SizedBox(height: 12),
         if (docs.isEmpty)
@@ -616,7 +638,7 @@ class _SearchScreenState extends State<SearchScreen>
               child: Text(
                 'No ideas found.',
                 style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF9CA3AF), fontSize: 14),
+                    color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF), fontSize: 14),
               ),
             ),
           )
@@ -638,6 +660,10 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── Investors Section ─────────────────────────────────────────────────────
   Widget _buildInvestorsSection() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -646,7 +672,7 @@ class _SearchScreenState extends State<SearchScreen>
           style: GoogleFonts.plusJakartaSans(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF111827)),
+              color: isDark ? colorScheme.onSurface : const Color(0xFF111827)),
         ),
         const SizedBox(height: 12),
         ..._investors.map((inv) => _InvestorCard(
@@ -660,16 +686,20 @@ class _SearchScreenState extends State<SearchScreen>
 
   // ── Bottom Navigation ─────────────────────────────────────────────────────
   Widget _buildBottomNav() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Theme(
-      data: Theme.of(context).copyWith(
-        bottomAppBarTheme: const BottomAppBarTheme(height: 64),
+      data: theme.copyWith(
+        bottomAppBarTheme: const BottomAppBarThemeData(height: 64),
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? colorScheme.surface : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
               blurRadius: 12,
               offset: const Offset(0, -3),
             ),
@@ -678,7 +708,7 @@ class _SearchScreenState extends State<SearchScreen>
         child: BottomAppBar(
           shape: const CircularNotchedRectangle(),
           notchMargin: 6,
-          color: Colors.white,
+          color: isDark ? colorScheme.surface : Colors.white,
           elevation: 0,
           padding: EdgeInsets.zero,
           child: SizedBox(
@@ -760,7 +790,7 @@ class _SearchScreenState extends State<SearchScreen>
 }
 
 // ─── Idea Card (Firestore-backed) ─────────────────────────────────────────────
-class _IdeaCardWidget extends StatelessWidget {
+class _IdeaCardWidget extends StatefulWidget {
   final Map<String, dynamic> data;
   final VoidCallback onBidTap;
 
@@ -770,33 +800,70 @@ class _IdeaCardWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final title       = data['title']            as String? ?? 'Untitled';
-    final desc        = data['detailedSolution'] as String? ??
-        data['problemStatement']                 as String? ?? '';
-    final likes       = data['likes']            as int?    ?? 0;
-    final aiRating    = (data['aiRating']        as num?)?.toDouble() ?? 4.0;
-    final category    = data['category']         as String? ?? '';
-    final isPatented  = data['isPatented']       as bool?   ?? false;
-    final contributor = data['contributorName']  as String? ?? 'Innovator';
+  State<_IdeaCardWidget> createState() => _IdeaCardWidgetState();
+}
 
-    final tagBg   = _tagColors[category]     ?? const Color(0xFFF3F4F6);
-    final tagText = _tagTextColors[category] ?? const Color(0xFF374151);
+class _IdeaCardWidgetState extends State<_IdeaCardWidget> {
+  Map<String, dynamic>? _mlData;
+  bool _loadingML = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMLInsights();
+  }
+
+  Future<void> _fetchMLInsights() async {
+    final problem = widget.data['problemStatement'] ?? widget.data['detailedSolution'] ?? '';
+    if (problem.isEmpty) return;
+    
+    setState(() => _loadingML = true);
+    final result = await MLService().processIdea(problem);
+    if (!mounted) return;
+    setState(() {
+      _mlData = result;
+      _loadingML = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
+    final title       = widget.data['title']            as String? ?? 'Untitled';
+    final desc        = widget.data['detailedSolution'] as String? ??
+        widget.data['problemStatement']                 as String? ?? '';
+    final likes       = widget.data['likes']            as int?    ?? 0;
+    final aiRating    = (_mlData?['rating'] as num?)?.toDouble() ?? 
+                       (widget.data['aiRating']        as num?)?.toDouble() ?? 4.0;
+    final sentiment   = _mlData?['sentiment'] ?? 'Neutral';
+    final sentimentScore = (_mlData?['sentiment_score'] as num?)?.toDouble() ?? 0.0;
+    final category    = widget.data['category']         as String? ?? '';
+    final isPatented  = widget.data['isPatented']       as bool?   ?? false;
+    final contributor = widget.data['contributorName']  as String? ?? 'Innovator';
+    final basePrice   = widget.data['basePrice']        as int?    ?? 0;
+    final biddingDate = widget.data['biddingDate']      as String? ?? '';
+    final suggestedPrice = widget.data['aiSuggestedPrice'] as int? ?? 0;
+
+    final tagBg   = _tagColors[category]     ?? (isDark ? colorScheme.surfaceContainerHighest : const Color(0xFFF3F4F6));
+    final tagText = _tagTextColors[category] ?? (isDark ? colorScheme.onSurface : const Color(0xFF374151));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colorScheme.surfaceContainer : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.10),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.10),
             blurRadius: 16,
             spreadRadius: 1,
             offset: const Offset(0, 5),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(isDark ? 0.15 : 0.04),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -807,121 +874,132 @@ class _IdeaCardWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Contributor ─────────────────────────────────────────────
+            // ── Contributor row ─────────────────────────────────────────
             Row(
               children: [
                 Container(
                   width: 28,
                   height: 28,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                        colors: [_gradientStart, _gradientEnd]),
+                      colors: [colorScheme.primary, colorScheme.secondary],
+                    ),
                   ),
-                  child:
-                  const Icon(Icons.person, color: Colors.white, size: 15),
+                  child: Icon(Icons.person, color: colorScheme.onPrimary, size: 15),
                 ),
                 const SizedBox(width: 8),
                 Text(
                   contributor,
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6B7280)),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF),
+                  ),
                 ),
+                const Spacer(),
+                if (aiRating > 4.5)
+                   Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                     decoration: BoxDecoration(
+                       gradient: LinearGradient(colors: [Colors.orange, Colors.red]),
+                       borderRadius: BorderRadius.circular(8),
+                     ),
+                     child: Text(
+                       'HIGH POTENTIAL',
+                       style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.white),
+                     ),
+                   ),
               ],
             ),
             const SizedBox(height: 10),
 
+            // ── Title ───────────────────────────────────────────────────
             Text(title,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF111827))),
+                    color: isDark ? colorScheme.onSurface : const Color(0xFF111827))),
             const SizedBox(height: 6),
-            Text(desc,
-                maxLines: 2,
+            Text(
+                _mlData?['summary'] ?? desc,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
-                    color: const Color(0xFF6B7280),
-                    height: 1.45)),
+                    color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF6B7280),
+                    height: 1.45,
+                    fontStyle: _mlData != null ? FontStyle.italic : null)),
             const SizedBox(height: 12),
 
-            // Likes + AI Rating
+            // ── ML Insights Row (Star + Sentiment + Likes) ──────────────
             Row(
               children: [
-                const Icon(Icons.thumb_up_alt_outlined,
-                    size: 16, color: Color(0xFF6B7280)),
+                _InsightChip(
+                  icon: Icons.star,
+                  label: aiRating.toStringAsFixed(1),
+                  color: Colors.amber,
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _InsightChip(
+                  icon: _getSentimentIcon(sentiment),
+                  label: sentiment,
+                  color: _getSentimentColor(sentimentScore),
+                  isDark: isDark,
+                ),
+                const Spacer(),
+                Icon(Icons.thumb_up_alt_outlined,
+                    size: 16, color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF)),
                 const SizedBox(width: 4),
                 Text('$likes',
                     style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
-                        color: const Color(0xFF374151),
-                        fontWeight: FontWeight.w500)),
-                const SizedBox(width: 16),
-                Text('AI Rating:',
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13, color: const Color(0xFF6B7280))),
-                const SizedBox(width: 4),
-                _StarRating(rating: aiRating),
-                const SizedBox(width: 4),
-                Text(aiRating.toStringAsFixed(1),
-                    style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        color: const Color(0xFF374151),
+                        color: isDark ? colorScheme.onSurface : const Color(0xFF111827),
                         fontWeight: FontWeight.w500)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // Tags
+            // ── Category & Patent Tags ──────────────────────────────────
             Row(
               children: [
                 if (category.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                        color: tagBg,
+                        color: isDark ? tagBg.withOpacity(0.2) : tagBg,
                         borderRadius: BorderRadius.circular(20)),
                     child: Text(category,
                         style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: tagText)),
                   ),
                 if (category.isNotEmpty) const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isPatented
-                        ? const Color(0xFFE8F5E9)
-                        : const Color(0xFFF3F4F6),
+                        ? (isDark ? const Color(0xFF1B5E20).withOpacity(0.3) : const Color(0xFFE8F5E9))
+                        : (isDark ? colorScheme.surfaceContainerHighest : const Color(0xFFF3F4F6)),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isPatented
-                            ? Icons.verified_outlined
-                            : Icons.block_outlined,
-                        size: 13,
-                        color: isPatented
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFF6B7280),
+                        isPatented ? Icons.verified_outlined : Icons.block_outlined,
+                        size: 12,
+                        color: isPatented ? const Color(0xFF2E7D32) : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF6B7280)),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 3),
                       Text(
                         isPatented ? 'Patented' : 'Not Patented',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: isPatented
-                              ? const Color(0xFF2E7D32)
-                              : const Color(0xFF6B7280),
+                          color: isPatented ? const Color(0xFF2E7D32) : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF6B7280)),
                         ),
                       ),
                     ],
@@ -929,23 +1007,53 @@ class _IdeaCardWidget extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+
+            // ── Price & Timeline Row ────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Base Price', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF))),
+                    Text('₹${basePrice.toString()}', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w700, color: colorScheme.primary)),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Bidding Deadline', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF))),
+                    Text(biddingDate.isNotEmpty ? biddingDate : 'TBD', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: isDark ? colorScheme.onSurface : const Color(0xFF374151))),
+                  ],
+                ),
+                if (suggestedPrice > 0)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AI Suggested', style: GoogleFonts.plusJakartaSans(fontSize: 10, color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF))),
+                      Text('₹${suggestedPrice.toString()}', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.secondary)),
+                    ],
+                  ),
+              ],
+            ),
             const SizedBox(height: 14),
 
-            // Bid button
+            // ── Bid Button ──────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 46,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [_gradientStart, _gradientEnd],
+                  gradient: LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.secondary],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: TextButton(
-                  onPressed: onBidTap,
+                  onPressed: widget.onBidTap,
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -959,6 +1067,59 @@ class _IdeaCardWidget extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── Sentiment helpers ─────────────────────────────────────────────────────────
+IconData _getSentimentIcon(String sentiment) {
+  switch (sentiment) {
+    case 'Positive':
+      return Icons.sentiment_satisfied;
+    case 'Negative':
+      return Icons.sentiment_dissatisfied;
+    default:
+      return Icons.sentiment_neutral;
+  }
+}
+
+Color _getSentimentColor(double sentimentScore) {
+  if (sentimentScore >= 0.05) return const Color(0xFF10B981);
+  if (sentimentScore <= -0.05) return const Color(0xFFEF4444);
+  return const Color(0xFFFBBF24);
+}
+
+// ─── Insight Chip ─────────────────────────────────────────────────────────────
+class _InsightChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool isDark;
+
+  const _InsightChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(isDark ? 0.15 : 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(isDark ? 0.3 : 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+        ],
       ),
     );
   }
@@ -1003,14 +1164,18 @@ class _InvestorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? colorScheme.surfaceContainer : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.07),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.07),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -1047,12 +1212,12 @@ class _InvestorCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF111827))),
+                          color: isDark ? colorScheme.onSurface : const Color(0xFF111827))),
                   const SizedBox(height: 2),
                   Text(
                     '${investor.designation} at ${investor.company}',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12, color: const Color(0xFF6B7280)),
+                        fontSize: 12, color: isDark ? colorScheme.onSurfaceVariant : const Color(0xFF6B7280)),
                   ),
                 ],
               ),
@@ -1067,12 +1232,14 @@ class _InvestorCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: isInvited
                       ? null
-                      : const LinearGradient(
-                    colors: [_gradientStart, _gradientEnd],
+                      : LinearGradient(
+                    colors: [colorScheme.primary, colorScheme.secondary],
                     begin: Alignment.centerLeft,
                     end: Alignment.centerRight,
                   ),
-                  color: isInvited ? const Color(0xFFF3F4F6) : null,
+                  color: isInvited 
+                      ? (isDark ? colorScheme.surfaceContainerHighest : const Color(0xFFF3F4F6))
+                      : null,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -1084,7 +1251,7 @@ class _InvestorCard extends StatelessWidget {
                           : Icons.person_add_alt_1_outlined,
                       size: 15,
                       color: isInvited
-                          ? const Color(0xFF6B7280)
+                          ? (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF6B7280))
                           : Colors.white,
                     ),
                     const SizedBox(width: 4),
@@ -1094,7 +1261,7 @@ class _InvestorCard extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: isInvited
-                            ? const Color(0xFF6B7280)
+                            ? (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF6B7280))
                             : Colors.white,
                       ),
                     ),
@@ -1123,6 +1290,10 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -1130,12 +1301,12 @@ class _DrawerItem extends StatelessWidget {
         const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: _purple, size: 22),
+            Icon(icon, color: isDark ? colorScheme.primary : _purple, size: 22),
             const SizedBox(width: 16),
             Text(label,
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
-                    color: const Color(0xFF374151),
+                    color: isDark ? colorScheme.onSurface : const Color(0xFF374151),
                     fontWeight: FontWeight.w500)),
           ],
         ),
@@ -1160,6 +1331,10 @@ class _BottomNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -1170,16 +1345,114 @@ class _BottomNavItem extends StatelessWidget {
           children: [
             Icon(icon,
                 size: 28,
-                color: selected ? _purple : const Color(0xFF9CA3AF)),
+                color: selected 
+                    ? (isDark ? colorScheme.primary : _purple)
+                    : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF))),
             const SizedBox(height: 1),
             Text(label,
                 style: TextStyle(
                   fontSize: 10,
-                  color: selected ? _purple : const Color(0xFF9CA3AF),
+                  color: selected
+                      ? (isDark ? colorScheme.primary : _purple)
+                      : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF)),
                   fontWeight:
                   selected ? FontWeight.w600 : FontWeight.w400,
                 )),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Appearance Toggle ────────────────────────────────────────────────────────
+class _AppearanceToggle extends StatelessWidget {
+  const _AppearanceToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeManager.themeMode,
+      builder: (context, mode, _) {
+        final isDarkMode = mode == ThemeMode.dark;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isDarkMode ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                    color: colorScheme.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Appearance',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 15,
+                      color: isDark ? colorScheme.onSurface : const Color(0xFF111827),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              _ModernSwitch(
+                value: isDarkMode,
+                onChanged: (val) => ThemeManager.toggleTheme(val),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── Modern Switch ────────────────────────────────────────────────────────────
+class _ModernSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _ModernSwitch({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: 46,
+        height: 24,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: value ? colorScheme.primary : colorScheme.surfaceContainerHighest,
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 250),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: colorScheme.onPrimary,
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.scrim.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

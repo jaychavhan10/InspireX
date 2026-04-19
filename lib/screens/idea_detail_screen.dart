@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'idea_bidding_screen.dart';
+import '../utils/transitions.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const _purple        = Color(0xFF7C3AED);
-const _gradientStart = Color(0xFF7C3AED);
-const _gradientEnd   = Color(0xFF3B82F6);
-const _bgColor       = Color(0xFFF8FAFC);
+// Colors are now derived from the theme color scheme.
 
 // ─── Fallback content for seeded/dummy ideas ──────────────────────────────────
 const _fallbackProblem =
@@ -62,6 +63,12 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
   String  _biddingSchedule   = '';
   int     _basePrice         = 0;
   bool    _isLoading         = true;
+  
+  // ── ML Insights ────────────────────────────────────────────────────────────
+  String  _mlSummary         = '';
+  String  _sentiment         = '';
+  String  _similarityStatus  = '';
+  bool    _mlLoading         = false;
 
   final _uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -136,6 +143,9 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
         _basePrice       = computedPrice;
         _isLoading       = false;
       });
+      
+      // Load ML insights after idea data
+      _loadMLInsights();
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -145,6 +155,35 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
           _basePrice        = widget.isPatented ? 150000 : 85000;
           _isLoading        = false;
         });
+      }
+    }
+  }
+
+  // ── Load ML insights from backend ──────────────────────────────────────────
+  Future<void> _loadMLInsights() async {
+    try {
+      setState(() => _mlLoading = true);
+      
+      final response = await http.post(
+        Uri.parse('http://192.168.1.7:5000/process'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': _detailedSolution}),
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200 && mounted) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _mlSummary = data['summary'] ?? '';
+          _sentiment = data['sentiment'] ?? '';
+          _similarityStatus = data['similarity_status'] ?? '';
+          _mlLoading = false;
+        });
+      } else if (mounted) {
+        setState(() => _mlLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _mlLoading = false);
       }
     }
   }
@@ -240,28 +279,34 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
   }
 
   // ── Category colour helpers ────────────────────────────────────────────────
-  Color _categoryBg() {
-    switch (widget.industry) {
-      case 'Food':          return const Color(0xFFFFF3E0);
-      case 'AI':            return const Color(0xFFEDE9FE);
-      case 'Blockchain':    return const Color(0xFFDBEAFE);
-      case 'IoT':           return const Color(0xFFDCFCE7);
-      case 'Healthcare':    return const Color(0xFFFFE4E6);
-      case 'Sustainability':return const Color(0xFFD1FAE5);
-      default:              return const Color(0xFFF1F5F9);
-    }
+  Color _getCategoryTagBg(String cat, ColorScheme colorScheme, bool isDark) {
+    final map = <String, Color>{
+      'Food':          const Color(0xFFFFF3E0),
+      'AI':            const Color(0xFFF3E8FF),
+      'Automobile':    const Color(0xFFEFF6FF),
+      'Healthcare':    const Color(0xFFFEF2F2),
+      'Blockchain':    const Color(0xFFECFEFF),
+      'IoT':           const Color(0xFFF0FDF4),
+      'Sustainability':const Color(0xFFECFDF5),
+    };
+    final base = map[cat] ?? colorScheme.surfaceContainerHighest;
+    if (isDark) return base.withOpacity(0.15);
+    return base;
   }
 
-  Color _categoryText() {
-    switch (widget.industry) {
-      case 'Food':          return const Color(0xFFE65100);
-      case 'AI':            return _purple;
-      case 'Blockchain':    return const Color(0xFF1D4ED8);
-      case 'IoT':           return const Color(0xFF16A34A);
-      case 'Healthcare':    return const Color(0xFFBE123C);
-      case 'Sustainability':return const Color(0xFF059669);
-      default:              return const Color(0xFF374151);
-    }
+  Color _getCategoryTagText(String cat, ColorScheme colorScheme, bool isDark) {
+    final map = <String, Color>{
+      'Food':          const Color(0xFFE65100),
+      'AI':            const Color(0xFF6D28D9),
+      'Automobile':    const Color(0xFF1D4ED8),
+      'Healthcare':    const Color(0xFFDC2626),
+      'Blockchain':    const Color(0xFF0E7490),
+      'IoT':           const Color(0xFF15803D),
+      'Sustainability':const Color(0xFF047857),
+    };
+    final base = map[cat] ?? colorScheme.onSurfaceVariant;
+    if (isDark) return base.withOpacity(0.9);
+    return base;
   }
 
   String _formatPrice(int price) => '\$${price
@@ -269,33 +314,33 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
       .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
           (m) => '${m[1]},')}';
 
-  // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: _bgColor,
+      backgroundColor: colorScheme.surface,
       body: Column(
         children: [
           // ── AppBar ───────────────────────────────────────────────────────
           SafeArea(
             bottom: false,
             child: Container(
-              color: Colors.white,
+              color: colorScheme.surface,
               padding:
               const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               child: Row(
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back,
-                        color: Color(0xFF374151), size: 24),
+                    icon: Icon(Icons.arrow_back,
+                        color: colorScheme.onSurface, size: 24),
                   ),
                   Text(
                     'Idea Details',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF111827),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                 ],
@@ -306,29 +351,33 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
           // ── Body ─────────────────────────────────────────────────────────
           Expanded(
             child: _isLoading
-                ? const Center(
-              child: CircularProgressIndicator(color: _purple),
+                ? Center(
+              child: CircularProgressIndicator(color: colorScheme.primary),
             )
                 : ListView(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
-              children: [_buildMainCard()],
+              children: [_buildMainCard(colorScheme)],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _isLoading ? null : _buildBottomCTA(),
+      bottomNavigationBar: _isLoading ? null : _buildBottomCTA(colorScheme),
     );
   }
 
   // ── Main card ─────────────────────────────────────────────────────────────
-  Widget _buildMainCard() {
+  Widget _buildMainCard(ColorScheme colorScheme) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tagBg   = _getCategoryTagBg(widget.industry, colorScheme, isDark);
+    final tagText = _getCategoryTagText(widget.industry, colorScheme, isDark);
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: colorScheme.scrim.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -343,15 +392,15 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             children: [
               Container(
                 width: 48, height: 48,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [_gradientStart, _gradientEnd],
+                    colors: [colorScheme.primary, colorScheme.secondary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child: const Icon(Icons.person, color: Colors.white, size: 24),
+                child: Icon(Icons.person, color: colorScheme.onPrimary, size: 24),
               ),
               const SizedBox(width: 12),
               Column(
@@ -362,13 +411,13 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF111827),
+                      color: colorScheme.onSurface,
                     ),
                   ),
                   Text(
                     'Contributor',
                     style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13, color: const Color(0xFF6B7280)),
+                        fontSize: 13, color: colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -382,9 +431,113 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF111827),
+              color: colorScheme.onSurface,
             ),
           ),
+          const SizedBox(height: 12),
+
+          // ── ML Summary ─────────────────────────────────────────────────
+          if (_mlSummary.isNotEmpty)
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: colorScheme.primary.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome, size: 16, color: colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'AI Summary',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _mlSummary,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: colorScheme.onSurface,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (_mlLoading)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SizedBox(
+                height: 20,
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+
+          // ── ML Insights - Sentiment & Similarity ───────────────────────
+          if (_sentiment.isNotEmpty || _similarityStatus.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (_sentiment.isNotEmpty)
+                  _Pill(
+                    icon: _sentiment == 'Positive'
+                        ? Icons.sentiment_satisfied
+                        : _sentiment == 'Negative'
+                            ? Icons.sentiment_dissatisfied
+                            : Icons.sentiment_neutral,
+                    label: _sentiment,
+                    bgColor: _sentiment == 'Positive'
+                        ? const Color(0xFF10B981).withOpacity(0.1)
+                        : _sentiment == 'Negative'
+                            ? const Color(0xFFEF4444).withOpacity(0.1)
+                            : colorScheme.surfaceContainerHighest,
+                    textColor: _sentiment == 'Positive'
+                        ? const Color(0xFF10B981)
+                        : _sentiment == 'Negative'
+                            ? const Color(0xFFEF4444)
+                            : colorScheme.onSurfaceVariant,
+                  ),
+                if (_similarityStatus.isNotEmpty)
+                  _Pill(
+                    label: _similarityStatus,
+                    bgColor: _similarityStatus.contains('Low')
+                        ? const Color(0xFF10B981).withOpacity(0.1)
+                        : _similarityStatus.contains('High')
+                            ? const Color(0xFFEF4444).withOpacity(0.1)
+                            : const Color(0xFFF59E0B).withOpacity(0.1),
+                    textColor: _similarityStatus.contains('Low')
+                        ? const Color(0xFF10B981)
+                        : _similarityStatus.contains('High')
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFFF59E0B),
+                  ),
+              ],
+            ),
           const SizedBox(height: 12),
 
           // ── Tags ───────────────────────────────────────────────────────
@@ -393,8 +546,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             children: [
               _Pill(
                 label: widget.industry,
-                bgColor: _categoryBg(),
-                textColor: _categoryText(),
+                bgColor: tagBg,
+                textColor: tagText,
               ),
               _Pill(
                 icon: widget.isPatented
@@ -402,11 +555,11 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                     : Icons.block_outlined,
                 label: widget.isPatented ? 'Patented' : 'Not Patented',
                 bgColor: widget.isPatented
-                    ? const Color(0xFFDCFCE7)
-                    : const Color(0xFFF1F5F9),
+                    ? const Color(0xFF16A34A).withOpacity(0.1)
+                    : colorScheme.surfaceContainerHighest,
                 textColor: widget.isPatented
                     ? const Color(0xFF16A34A)
-                    : const Color(0xFF6B7280),
+                    : colorScheme.onSurfaceVariant,
               ),
             ],
           ),
@@ -417,7 +570,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             children: [
               Text('AI Rating:',
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14, color: const Color(0xFF6B7280))),
+                      fontSize: 14, color: colorScheme.onSurfaceVariant)),
               const SizedBox(width: 8),
               _StarRating(rating: widget.aiRating),
               const SizedBox(width: 6),
@@ -426,7 +579,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF374151)),
+                    color: colorScheme.onSurface),
               ),
             ],
           ),
@@ -438,14 +591,14 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827)),
+                color: colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
           Text(
             _problemStatement,
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
-                color: const Color(0xFF4B5563),
+                color: colorScheme.onSurfaceVariant,
                 height: 1.6),
           ),
           const SizedBox(height: 20),
@@ -456,14 +609,14 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827)),
+                color: colorScheme.onSurface),
           ),
           const SizedBox(height: 8),
           Text(
             _detailedSolution,
             style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
-                color: const Color(0xFF4B5563),
+                color: colorScheme.onSurfaceVariant,
                 height: 1.6),
           ),
           const SizedBox(height: 6),
@@ -471,7 +624,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
             'Full details will be revealed to the winning bidder',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13,
-              color: _purple,
+              color: colorScheme.primary,
               fontStyle: FontStyle.italic,
             ),
           ),
@@ -481,8 +634,11 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF5F3FF), Color(0xFFEFF6FF)],
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primaryContainer.withOpacity(0.3),
+                  colorScheme.secondaryContainer.withOpacity(0.3)
+                ],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
@@ -495,7 +651,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                 Text(
                   'Base Price',
                   style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13, color: const Color(0xFF6B7280)),
+                      fontSize: 13, color: colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -503,7 +659,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: const Color(0xFF111827)),
+                      color: colorScheme.onSurface),
                 ),
               ],
             ),
@@ -513,10 +669,10 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
           // ── Bidding Schedule ───────────────────────────────────────────
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFFFFBEB),
+              color: colorScheme.tertiaryContainer.withOpacity(0.2),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: const Color(0xFFFDE68A), width: 1),
+                  color: colorScheme.tertiaryContainer, width: 1),
             ),
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -524,30 +680,30 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 18, color: Color(0xFFD97706)),
+                    Icon(Icons.calendar_today_outlined,
+                        size: 18, color: colorScheme.tertiary),
                     const SizedBox(width: 8),
                     Text(
                       'Bidding Schedule',
                       style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF92400E)),
+                          color: colorScheme.tertiary),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.access_time_outlined,
-                        size: 16, color: Color(0xFFD97706)),
+                    Icon(Icons.access_time_outlined,
+                        size: 16, color: colorScheme.tertiary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _biddingSchedule,
                         style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
-                            color: const Color(0xFFB45309)),
+                            color: colorScheme.onTertiaryContainer),
                       ),
                     ),
                   ],
@@ -557,14 +713,14 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
           ),
           const SizedBox(height: 20),
 
-          const Divider(color: Color(0xFFE5E7EB), height: 1),
+          Divider(color: colorScheme.outlineVariant, height: 1),
           const SizedBox(height: 16),
 
           // ── Likes + Interested count ───────────────────────────────────
           Row(
             children: [
-              const Icon(Icons.thumb_up_alt_outlined,
-                  size: 20, color: _purple),
+              Icon(Icons.thumb_up_alt_outlined,
+                  size: 20, color: colorScheme.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -572,7 +728,7 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                       '  •  $_interestedCount interested',
                   style: GoogleFonts.plusJakartaSans(
                       fontSize: 13,
-                      color: const Color(0xFF374151)),
+                      color: colorScheme.onSurfaceVariant),
                 ),
               ),
             ],
@@ -590,8 +746,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: _isLiked
-                          ? _purple
-                          : const Color(0xFFF1F5F9),
+                          ? colorScheme.primary
+                          : colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Row(
@@ -603,8 +759,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                               : Icons.thumb_up_alt_outlined,
                           size: 16,
                           color: _isLiked
-                              ? Colors.white
-                              : const Color(0xFF374151),
+                              ? colorScheme.onPrimary
+                              : colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -613,8 +769,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: _isLiked
-                                ? Colors.white
-                                : const Color(0xFF374151),
+                                ? colorScheme.onPrimary
+                                : colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -631,8 +787,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     decoration: BoxDecoration(
                       color: _isInterested
-                          ? const Color(0xFF0EA5E9)
-                          : const Color(0xFFF1F5F9),
+                          ? colorScheme.secondary
+                          : colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Row(
@@ -644,8 +800,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                               : Icons.people_outline,
                           size: 16,
                           color: _isInterested
-                              ? Colors.white
-                              : const Color(0xFF374151),
+                              ? colorScheme.onSecondary
+                              : colorScheme.onSurfaceVariant,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -654,8 +810,8 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: _isInterested
-                                ? Colors.white
-                                : const Color(0xFF374151),
+                                ? colorScheme.onSecondary
+                                : colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -671,9 +827,9 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
   }
 
   // ── Bottom CTA ────────────────────────────────────────────────────────────
-  Widget _buildBottomCTA() {
+  Widget _buildBottomCTA(ColorScheme colorScheme) {
     return Container(
-      color: Colors.white,
+      color: colorScheme.surface,
       padding: EdgeInsets.fromLTRB(
         16, 12, 16,
         MediaQuery.of(context).padding.bottom + 12,
@@ -683,17 +839,17 @@ class _IdeaDetailScreenState extends State<IdeaDetailScreen> {
         height: 52,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_gradientStart, _gradientEnd],
+            gradient: LinearGradient(
+              colors: [colorScheme.primary, colorScheme.secondary],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(14),
           ),
           child: TextButton(
-            onPressed: () {},
+            onPressed: () => navigateSmoothly(context, IdeaBiddingScreen(ideaTitle: widget.title)),
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
+              foregroundColor: colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
             ),
@@ -716,6 +872,7 @@ class _StarRating extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const Color goldStandard = Color(0xFFFBBF24);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (i) {
@@ -724,7 +881,7 @@ class _StarRating extends StatelessWidget {
         return Icon(
           half ? Icons.star_half : (filled ? Icons.star : Icons.star_border),
           size: 17,
-          color: const Color(0xFFF59E0B),
+          color: goldStandard,
         );
       }),
     );
