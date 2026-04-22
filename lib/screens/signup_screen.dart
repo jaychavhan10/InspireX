@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'home_screen.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 enum _UserRole { contributor, investor, both }
@@ -409,11 +408,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                                builder: (_) => const HomeScreen()),
-                                (route) => false,
-                          );
+                          Navigator.of(context)
+                              .pushNamedAndRemoveUntil('/home', (route) => false);
                         },
                         style: TextButton.styleFrom(
                           foregroundColor: colorScheme.onPrimary,

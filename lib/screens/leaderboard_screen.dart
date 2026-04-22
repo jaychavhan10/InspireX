@@ -117,7 +117,10 @@ final List<SoldIdea> _topSoldIdeas = [
 
 // ─── LeaderboardScreen ───────────────────────────────────────────────────────
 class LeaderboardScreen extends StatefulWidget {
-  const LeaderboardScreen({super.key});
+  final bool showNavigation;
+  final VoidCallback? onDrawerToggle;
+
+  const LeaderboardScreen({super.key, this.showNavigation = true, this.onDrawerToggle});
 
   @override
   State<LeaderboardScreen> createState() => _LeaderboardScreenState();
@@ -171,16 +174,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         Navigator.popUntil(context, (r) => r.isFirst);
         break;
       case 1:
-        navigateSmoothly(context, const SearchScreen());
+        navigateSmoothly(context, const SearchScreen(), replacement: true);
         break;
       case 2:
         navigateSmoothly(context, const SubmitIdeaScreen());
         break;
       case 4:
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AllBiddingScreen()),
-        );
+        navigateSmoothly(context, const AllBiddingScreen(), replacement: true);
         break;
     }
   }
@@ -191,11 +191,24 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
+    // When embedded in PageView (showNavigation: false), disable drawer completely
+    if (!widget.showNavigation) {
+      return Scaffold(
+        backgroundColor: isDark ? colorScheme.surface : const Color(0xFFF8FAFC),
+        drawerEnableOpenDragGesture: false,
+        endDrawerEnableOpenDragGesture: false,
+        body: _buildMainContent(colorScheme, isDark),
+      );
+    }
+
+    // When standalone (showNavigation: true), include drawer
     return Stack(
       children: [
         // ── 1. Scaffold ───────────────────────────────────────────────────
         Scaffold(
           backgroundColor: isDark ? colorScheme.surface : const Color(0xFFF8FAFC),
+          drawerEnableOpenDragGesture: false,
+          endDrawerEnableOpenDragGesture: false,
           body: _buildMainContent(colorScheme, isDark),
           bottomNavigationBar: _buildBottomNav(colorScheme),
           floatingActionButton: _buildFAB(colorScheme),
@@ -207,7 +220,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         if (_drawerOpen)
           GestureDetector(
             onTap: _closeDrawer,
-            child: Container(color: colorScheme.scrim.withOpacity(0.35)),
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: colorScheme.scrim.withValues(alpha: 0.35)),
           ),
 
         // ── 3. Drawer ─────────────────────────────────────────────────────
@@ -231,7 +245,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           _buildAppBar(colorScheme),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
                 _buildHeader(colorScheme),
                 const SizedBox(height: 20),
@@ -250,21 +264,23 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
   Widget _buildAppBar(ColorScheme colorScheme) {
     return Container(
       color: colorScheme.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           // Hamburger → opens drawer (not back navigation)
           GestureDetector(
-            onTap: _toggleDrawer,
+            onTap: !widget.showNavigation && widget.onDrawerToggle != null
+                ? widget.onDrawerToggle
+                : _toggleDrawer,
             child:
-            Icon(Icons.menu, color: colorScheme.onSurface, size: 24),
+            Icon(Icons.menu, color: colorScheme.onSurface, size: 26),
           ),
           Expanded(
             child: Center(
               child: Text(
                 'InspireX',
                 style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: colorScheme.primary,
                   letterSpacing: 0.5,
@@ -275,8 +291,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           GestureDetector(
             onTap: () => navigateSmoothly(context, const ProfileScreen()),
             child: Container(
-              width: 34,
-              height: 34,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(
@@ -286,7 +302,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                 ),
               ),
               child:
-              Icon(Icons.person, color: colorScheme.onPrimary, size: 18),
+              Icon(Icons.person, color: colorScheme.onPrimary, size: 20),
             ),
           ),
         ],
@@ -1013,25 +1029,11 @@ class _BottomNavItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 24,
-                color:
-                selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                fontWeight:
-                selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
+        child: Center(
+          child: Icon(icon,
+              size: 24,
+              color:
+              selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
         ),
       ),
     );

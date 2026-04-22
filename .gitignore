@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+backend/ideas_data.pkl
+backend/tfidf_matrix.joblib
+backend/tfidf_matrix.pkl

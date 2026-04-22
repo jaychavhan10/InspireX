@@ -152,7 +152,10 @@ Color _getCategoryTagText(String cat, ColorScheme colorScheme, bool isDark) {
 
 // ─── AllBiddingScreen ─────────────────────────────────────────────────────────
 class AllBiddingScreen extends StatefulWidget {
-  const AllBiddingScreen({super.key});
+  final bool showNavigation;
+  final VoidCallback? onDrawerToggle;
+
+  const AllBiddingScreen({super.key, this.showNavigation = true, this.onDrawerToggle});
 
   @override
   State<AllBiddingScreen> createState() => _AllBiddingScreenState();
@@ -250,11 +253,24 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
+    // When embedded in PageView (showNavigation: false), disable drawer completely
+    if (!widget.showNavigation) {
+      return Scaffold(
+        backgroundColor: colorScheme.surface,
+        drawerEnableOpenDragGesture: false,
+        endDrawerEnableOpenDragGesture: false,
+        body: _buildMainContent(colorScheme, isDark),
+      );
+    }
+
+    // When standalone (showNavigation: true), include drawer
     return Stack(
       children: [
         // ── 1. Scaffold ───────────────────────────────────────────────────
         Scaffold(
           backgroundColor: colorScheme.surface,
+          drawerEnableOpenDragGesture: false,
+          endDrawerEnableOpenDragGesture: false,
           body: _buildMainContent(colorScheme, isDark),
           bottomNavigationBar: _buildBottomNav(colorScheme),
           floatingActionButton: _buildFAB(colorScheme),
@@ -266,7 +282,8 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
         if (_drawerOpen)
           GestureDetector(
             onTap: _closeDrawer,
-            child: Container(color: colorScheme.scrim.withOpacity(0.35)),
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: colorScheme.scrim.withValues(alpha: 0.35)),
           ),
 
         // ── 3. Drawer ─────────────────────────────────────────────────────
@@ -357,7 +374,9 @@ class _AllBiddingScreenState extends State<AllBiddingScreen>
       child: Row(
         children: [
           GestureDetector(
-            onTap: _toggleDrawer,
+            onTap: !widget.showNavigation && widget.onDrawerToggle != null
+                ? widget.onDrawerToggle
+                : _toggleDrawer,
             child: Icon(Icons.menu, color: colorScheme.onSurface, size: 26),
           ),
           Expanded(
@@ -1186,24 +1205,10 @@ class _BottomNavItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 28,
-                color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
-            const SizedBox(height: 1),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                fontWeight:
-                selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ],
+        child: Center(
+          child: Icon(icon,
+              size: 28,
+              color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
         ),
       ),
     );

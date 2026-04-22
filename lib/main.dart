@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'theme_manager.dart';
 
 import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_navigation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,14 +45,19 @@ class MyApp extends StatelessWidget {
               primary: const Color(0xFF818CF8),
               secondary: const Color(0xFF6366F1),
               tertiary: const Color(0xFF4F46E5),
-              surface: const Color(0xFF0F172A),
-              onSurface: const Color(0xFFF8FAFC),
+              surface: const Color(0xFF121212), // True black background
+              surfaceContainer: const Color(0xFF1E1E1E), // Slightly lighter grey for cards
+              surfaceContainerHighest: const Color(0xFF242424), // Even lighter for emphasis
+              onSurface: const Color(0xFFFFFFFF), // Pure white text
+              onSurfaceVariant: const Color(0xFF888888), // Muted grey for secondary text
+              outline: const Color(0xFF333333), // Subtle dark grey borders
+              outlineVariant: const Color(0xFF404040), // Slightly lighter borders
             ),
           ),
           initialRoute: '/login',
           routes: {
             '/login': (_) => const LoginScreen(),
-            '/home': (_) => const HomeScreen(),
+            '/home': (_) => const MainNavigationScreen(),
           },
         );
       },

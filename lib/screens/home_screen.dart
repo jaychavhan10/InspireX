@@ -181,7 +181,10 @@ Future<void> _seedApprovedIdeasIfEmpty() async {
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool showNavigation;
+  final VoidCallback? onDrawerToggle;
+
+  const HomeScreen({super.key, this.showNavigation = true, this.onDrawerToggle});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -263,10 +266,28 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    
+    // When embedded in PageView (showNavigation: false), disable drawer completely
+    if (!widget.showNavigation) {
+      return Stack(
+        children: [
+          Scaffold(
+            backgroundColor: colorScheme.surface,
+            drawerEnableOpenDragGesture: false,
+            endDrawerEnableOpenDragGesture: false,
+            body: _buildMainContent(context),
+          ),
+        ],
+      );
+    }
+    
+    // When standalone (showNavigation: true), include drawer
     return Stack(
       children: [
         Scaffold(
           backgroundColor: colorScheme.surface,
+          drawerEnableOpenDragGesture: false,
+          endDrawerEnableOpenDragGesture: false,
           body: _buildMainContent(context),
           bottomNavigationBar: _buildBottomNav(context),
           floatingActionButton: _buildFAB(context),
@@ -276,7 +297,8 @@ class _HomeScreenState extends State<HomeScreen>
         if (_drawerOpen)
           GestureDetector(
             onTap: _closeDrawer,
-            child: Container(color: colorScheme.scrim.withOpacity(0.35)),
+            behavior: HitTestBehavior.opaque,
+            child: Container(color: colorScheme.scrim.withValues(alpha: 0.35)),
           ),
         AnimatedBuilder(
           animation: _drawerSlide,
@@ -407,7 +429,9 @@ class _HomeScreenState extends State<HomeScreen>
       child: Row(
         children: [
           GestureDetector(
-            onTap: _toggleDrawer,
+            onTap: !widget.showNavigation && widget.onDrawerToggle != null
+                ? widget.onDrawerToggle
+                : _toggleDrawer,
             child: Icon(Icons.menu, color: colorScheme.onSurface, size: 26),
           ),
           Expanded(
@@ -1126,22 +1150,10 @@ class _BottomNavItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 28,
-                color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
-            const SizedBox(height: 1),
-            Text(label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                  fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.w400,
-                )),
-          ],
+        child: Center(
+          child: Icon(icon,
+              size: 28,
+              color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant),
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'profile_screen.dart';
 import 'notifications_screen.dart';
 import 'leaderboard_screen.dart';
 import 'all_bidding_screen.dart';
+import 'submit_idea_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme_manager.dart';
@@ -89,14 +90,16 @@ final _investors = <_Investor>[
 
 // ─── SearchScreen ─────────────────────────────────────────────────────────────
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final bool showNavigation;
+  final VoidCallback? onDrawerToggle;
+
+  const SearchScreen({super.key, this.showNavigation = true, this.onDrawerToggle});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen>
-    with SingleTickerProviderStateMixin {
+class _SearchScreenState extends State<SearchScreen> {
   final int _selectedIndex = 1;
 
   String? _selectedCategory;
@@ -104,10 +107,6 @@ class _SearchScreenState extends State<SearchScreen>
   String _searchQuery = '';
 
   final Set<String> _invitedIds = {};
-
-  bool _drawerOpen = false;
-  late AnimationController _drawerController;
-  late Animation<double>   _drawerSlide;
 
   // ── Live stream from the shared approved_ideas collection ─────────────────
   final Stream<QuerySnapshot<Map<String, dynamic>>> _approvedIdeasStream =
@@ -117,38 +116,9 @@ class _SearchScreenState extends State<SearchScreen>
       .snapshots();
 
   @override
-  void initState() {
-    super.initState();
-    _drawerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    );
-    _drawerSlide = CurvedAnimation(
-      parent: _drawerController,
-      curve: Curves.easeInOut,
-    );
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
-    _drawerController.dispose();
     super.dispose();
-  }
-
-  // ── Drawer helpers ────────────────────────────────────────────────────────
-  void _toggleDrawer() {
-    setState(() => _drawerOpen = !_drawerOpen);
-    _drawerOpen
-        ? _drawerController.forward()
-        : _drawerController.reverse();
-  }
-
-  void _closeDrawer() {
-    if (_drawerOpen) {
-      setState(() => _drawerOpen = false);
-      _drawerController.reverse();
-    }
   }
 
   // ── Client-side filtering ─────────────────────────────────────────────────
@@ -182,11 +152,11 @@ class _SearchScreenState extends State<SearchScreen>
     if (index == _selectedIndex) return;
     
     if (index == 0) {
-      Navigator.pop(context);
+      Navigator.popUntil(context, (r) => r.isFirst);
     } else if (index == 3) {
-      navigateSmoothly(context, const LeaderboardScreen());
+      navigateSmoothly(context, const LeaderboardScreen(), replacement: true);
     } else if (index == 4) {
-      navigateSmoothly(context, const AllBiddingScreen());
+      navigateSmoothly(context, const AllBiddingScreen(), replacement: true);
     }
   }
 
@@ -242,67 +212,51 @@ class _SearchScreenState extends State<SearchScreen>
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: isDark ? colorScheme.surface : _bgColor,
-          body: Column(
-            children: [
-              _buildAppBar(),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: _approvedIdeasStream,
-                  builder: (_, snap) {
-                    // ── Loading ───────────────────────────────────────
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: CircularProgressIndicator(color: _purple),
-                      );
-                    }
+    return Scaffold(
+      backgroundColor: isDark ? colorScheme.surface : _bgColor,
+      drawerEnableOpenDragGesture: false,
+      endDrawerEnableOpenDragGesture: false,
+      body: Column(
+        children: [
+          _buildAppBar(),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _approvedIdeasStream,
+              builder: (_, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: _purple),
+                  );
+                }
 
-                    final allDocs  = snap.data?.docs ?? [];
-                    final filtered = _filterDocs(allDocs);
+                final allDocs  = snap.data?.docs ?? [];
+                final filtered = _filterDocs(allDocs);
 
-                    return ListView(
-                      padding:
-                      const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                      children: [
-                        _buildSearchBar(),
-                        const SizedBox(height: 20),
-                        _buildCategorySection(),
-                        const SizedBox(height: 20),
-                        _buildIdeasSection(filtered),
-                        const SizedBox(height: 24),
-                        _buildInvestorsSection(),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+                return ListView(
+                  padding:
+                  const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: [
+                    _buildSearchBar(),
+                    const SizedBox(height: 20),
+                    _buildCategorySection(),
+                    const SizedBox(height: 20),
+                    _buildIdeasSection(filtered),
+                    const SizedBox(height: 24),
+                    _buildInvestorsSection(),
+                  ],
+                );
+              },
+            ),
           ),
-          bottomNavigationBar: _buildBottomNav(),
-          floatingActionButton: _buildFAB(),
-          floatingActionButtonLocation:
-          FloatingActionButtonLocation.centerDocked,
-        ),
-
-        // ── Scrim ─────────────────────────────────────────────────────
-        if (_drawerOpen)
-          GestureDetector(
-            onTap: _closeDrawer,
-            child: Container(color: Colors.black.withOpacity(0.35)),
-          ),
-
-        // ── Drawer ────────────────────────────────────────────────────
-        AnimatedBuilder(
-          animation: _drawerSlide,
-          builder: (_, __) => Transform.translate(
-            offset: Offset((_drawerSlide.value - 1) * 280, 0),
-            child: _buildDrawer(),
-          ),
-        ),
-      ],
+        ],
+      ),
+      bottomNavigationBar:
+      widget.showNavigation ? _buildBottomNav() : null,
+      floatingActionButton:
+      widget.showNavigation ? _buildFAB() : null,
+      floatingActionButtonLocation: widget.showNavigation
+          ? FloatingActionButtonLocation.centerDocked
+          : null,
     );
   }
 
@@ -319,8 +273,11 @@ class _SearchScreenState extends State<SearchScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
+            // Menu button attempts to open parent drawer (MainNavigationScreen)
             GestureDetector(
-              onTap: _toggleDrawer,
+              onTap: !widget.showNavigation && widget.onDrawerToggle != null
+                  ? widget.onDrawerToggle
+                  : null,
               child: Icon(Icons.menu,
                   color: isDark ? colorScheme.onSurface : Color(0xFF374151), size: 26),
             ),
@@ -354,145 +311,6 @@ class _SearchScreenState extends State<SearchScreen>
                   ),
                 ),
                 child: const Icon(Icons.person, color: Colors.white, size: 20),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Drawer ────────────────────────────────────────────────────────────────
-  Widget _buildDrawer() {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    
-    return Material(
-      elevation: 16,
-      color: isDark ? colorScheme.surface : Colors.white,
-      child: SizedBox(
-        width: 280,
-        height: double.infinity,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [colorScheme.primary, colorScheme.secondary],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.25),
-                          ),
-                          child: const Icon(Icons.person,
-                              color: Colors.white, size: 26),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('John Doe',
-                                style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700)),
-                            Text('Investor',
-                                style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white70, fontSize: 13)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _closeDrawer,
-                    child: const Icon(Icons.close,
-                        color: Colors.white, size: 22),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                children: [
-                  _DrawerItem(
-                    icon: Icons.home_outlined,
-                    label: 'Home',
-                    onTap: () {
-                      _closeDrawer();
-                      Navigator.popUntil(context, (r) => r.isFirst);
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.trending_up_outlined,
-                    label: 'My Ideas',
-                    onTap: () {
-                      _closeDrawer();
-                      navigateSmoothly(context, const MyIdeasScreen());
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.notifications_outlined,
-                    label: 'Notifications',
-                    onTap: () {
-                      _closeDrawer();
-                      navigateSmoothly(context, NotificationsScreen(uid: null));
-                    },
-                  ),
-                  _DrawerItem(
-                    icon: Icons.person_outline,
-                    label: 'Profile',
-                    onTap: () {
-                      _closeDrawer();
-                      navigateSmoothly(context, const ProfileScreen());
-                    },
-                  ),
-                  _DrawerItem(
-                      icon: Icons.settings_outlined,
-                      label: 'Settings',
-                      onTap: _closeDrawer),
-                  _DrawerItem(
-                      icon: Icons.help_outline,
-                      label: 'Help & Support',
-                      onTap: _closeDrawer),
-                  const _AppearanceToggle(),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: isDark ? colorScheme.outline : Color(0xFFE5E7EB)),
-            InkWell(
-              onTap: () {},
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 20),
-                child: Row(
-                  children: [
-                    Icon(Icons.logout,
-                        color: colorScheme.error, size: 22),
-                    const SizedBox(width: 12),
-                    Text('Logout',
-                        style: GoogleFonts.plusJakartaSans(
-                            color: colorScheme.error,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
               ),
             ),
           ],
@@ -749,7 +567,9 @@ class _SearchScreenState extends State<SearchScreen>
     return Transform.translate(
       offset: const Offset(0, 12),
       child: GestureDetector(
-        onTap: () {},
+        onTap: () {
+          navigateSmoothly(context, const SubmitIdeaScreen());
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1339,26 +1159,12 @@ class _BottomNavItem extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                size: 28,
-                color: selected 
-                    ? (isDark ? colorScheme.primary : _purple)
-                    : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF))),
-            const SizedBox(height: 1),
-            Text(label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: selected
-                      ? (isDark ? colorScheme.primary : _purple)
-                      : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF)),
-                  fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.w400,
-                )),
-          ],
+        child: Center(
+          child: Icon(icon,
+              size: 28,
+              color: selected 
+                  ? (isDark ? colorScheme.primary : _purple)
+                  : (isDark ? colorScheme.onSurfaceVariant : const Color(0xFF9CA3AF))),
         ),
       ),
     );
