@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../utils/transitions.dart';
 import '../theme_manager.dart';
@@ -375,7 +376,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
             ),
             Divider(height: 1, color: isDark ? colorScheme.outline : const Color(0xFFE5E7EB)),
             InkWell(
-              onTap: () {},
+              onTap: () async {
+                _closeDrawer();
+                await FirebaseAuth.instance.signOut();
+                if (!mounted) return;
+                Navigator.pushReplacementNamed(context, '/login');
+              },
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 20, vertical: 20),

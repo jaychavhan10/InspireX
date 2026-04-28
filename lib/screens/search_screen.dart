@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'idea_detail_screen.dart';
 import 'idea_bidding_screen.dart';
-import 'my_ideas_screen.dart';
 import 'profile_screen.dart';
-import 'notifications_screen.dart';
 import 'leaderboard_screen.dart';
 import 'all_bidding_screen.dart';
 import 'submit_idea_screen.dart';
